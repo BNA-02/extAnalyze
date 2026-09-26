@@ -41,18 +41,7 @@ jobs:
         # Audit all workflow files for CI security issues.
         # Offline mode (no token) — metadata audits only; good enough for private repos.
         run: |
-          zizmor .github/workflows/ \
-            --format sarif \
-            --output zizmor-results.sarif || true
-          # Also print human-readable to log
           zizmor .github/workflows/ || true
-
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
-        if: always()
-        with:
-          name: zizmor-dev-${{ github.run_id }}
-          path: zizmor-results.sarif
-          if-no-files-found: ignore
 
   # ── 2. Code Quality ────────────────────────────────────────────────────────
   quality:

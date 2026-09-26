@@ -34,18 +34,7 @@ jobs:
 
       - name: Run zizmor
         # Hard exit on main — workflow security issues block the PR.
-        run: |
-          zizmor .github/workflows/ \
-            --format sarif \
-            --output zizmor-results.sarif
-          zizmor .github/workflows/
-
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
-        if: always()
-        with:
-          name: zizmor-main-${{ github.run_id }}
-          path: zizmor-results.sarif
-          if-no-files-found: ignore
+        run: zizmor .github/workflows/
 
   # ── 2. Code Quality ────────────────────────────────────────────────────────
   quality:
