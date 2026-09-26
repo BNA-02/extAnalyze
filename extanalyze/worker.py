@@ -75,6 +75,8 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
                 install_count="",
                 available=False,
                 source="error",
+                verified=False,
+                established=False,
             )
 
     # ── Step 2: Google CRX liveness (rate limited) ────────────────────────

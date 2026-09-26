@@ -185,6 +185,8 @@ def fetch_amo_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
             install_count="",
             available=False,
             source="amo",
+            verified=False,
+            established=False,
         )
 
     data = resp.json()
@@ -197,16 +199,30 @@ def fetch_amo_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
         summary_raw.get("en-US", "") if isinstance(summary_raw, dict) else str(summary_raw)
     )
 
-    categories = data.get("categories", {})
-    # Categories is a dict by app type e.g. {"firefox": ["privacy-security"]}
-    cat_list = categories.get("firefox", categories.get("android", []))
+    # AMO API returns categories as either:
+    # - flat list: ['privacy-security']  (new format)
+    # - dict by app: {'firefox': ['privacy-security']}  (older format)
+    categories_raw = data.get("categories", [])
+    if isinstance(categories_raw, list):
+        cat_list = categories_raw
+    elif isinstance(categories_raw, dict):
+        cat_list = categories_raw.get("firefox", categories_raw.get("android", []))
+    else:
+        cat_list = []
     category = cat_list[0] if cat_list else ""
 
-    author = data.get("authors", [{}])[0] if data.get("authors") else {}
-    developer = author.get("name", "")
+    authors = data.get("authors", [])
+    developer = authors[0].get("name", "") if authors else ""
 
     version = data.get("current_version", {}).get("version", "")
     downloads = data.get("average_daily_users", "")
+
+    # AMO 'promoted' list with category='recommended' = Mozilla-recommended (equivalent to verified)
+    promoted = data.get("promoted") or []
+    promoted_cats = [p.get("category", "") for p in promoted] if isinstance(promoted, list) else []
+    verified = "recommended" in promoted_cats
+    # 'line' = curated/featured by AMO staff — closest to 'established'
+    established = "line" in promoted_cats or "featured" in promoted_cats
 
     return StoreMeta(
         name=name,
@@ -217,8 +233,8 @@ def fetch_amo_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
         install_count=str(downloads),
         available=True,
         source="amo",
-        verified=False,  # AMO has its own verified system; not mapped here
-        established=False,
+        verified=verified,
+        established=established,
     )
 
 
