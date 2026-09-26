@@ -5,6 +5,7 @@ Also handles the Google CRX API liveness check.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 
@@ -175,53 +176,66 @@ def fetch_edge_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
 
 def fetch_cws_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
     """
-    Scrape Chrome Web Store page for extension metadata.
-    Always queries live store - used regardless of catalog hit, to get
-    developer name, verified/established status, and confirm availability.
+    Fetch Chrome Web Store metadata via the internal batchexecute JSON API.
+
+    Uses the xY2Ddd RPC endpoint that the CWS frontend itself calls, returning
+    a structured JSON array — no HTML scraping, no regex fragility.
+
+    Response schema (data[0] is the main extension record):
+      data[0][0]  str   extension ID
+      data[0][2]  str   name
+      data[0][3]  float rating
+      data[0][4]  int   review count
+      data[0][6]  str   short description
+      data[0][7]  str   website URL
+      data[0][8]  bool  verified publisher
+      data[0][9]  bool  established / featured publisher
+      data[0][11] list  [category_slug, None, category_id]
+      data[0][14] int   install count (raw integer)
+      data[0][18] str   manifest JSON (embedded)
+      data[10]    list  [email, address, ..., dev_short_name, company_name, ...]
+
+    Returns _empty_meta("cws") when the extension is not on the Chrome Web Store
+    (inner JSON is null), which correctly handles Edge-only IDs.
     """
-    url = _CWS_DETAIL_URL.format(ext_id=ext_id)
     session = requests.Session()
-    # Set cookie on both the CWS domain and the consent redirect domain
     session.cookies.set("SOCS", _CWS_COOKIES.split("=", 1)[1], domain=".google.com")
 
+    f_req = json.dumps([[["xY2Ddd", f'["{ext_id}"]', None, "generic"]]])
+    api_url = (
+        "https://chromewebstore.google.com"
+        "/_/ChromeWebStoreConsumerFeUi/data/batchexecute"
+        f"?rpcids=xY2Ddd&source-path=/detail/{ext_id}&hl=en"
+    )
+    post_headers = {
+        **_HEADERS,
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "X-Same-Domain": "1",
+        "Origin": "https://chromewebstore.google.com",
+        "Referer": f"https://chromewebstore.google.com/detail/{ext_id}",
+    }
+
     try:
-        resp = session.get(
-            url,
-            headers=_HEADERS,
-            timeout=timeout,
-            allow_redirects=True,
-        )
+        resp = session.post(api_url, data={"f.req": f_req}, headers=post_headers, timeout=timeout)
     except requests.RequestException:
         return _empty_meta("cws")
 
-    available = resp.status_code == 200
+    if resp.status_code != 200:
+        return _empty_meta("cws")
 
-    # Detect consent redirect — page title will be "Before you continue" or
-    # final URL will be consent.google.com
-    html = resp.text
-    is_consent_page = (
-        "consent.google.com" in resp.url
-        or "Before you continue" in html[:500]
-        or "<title>Before you continue</title>" in html
-    )
+    # Strip )]}'\n\n XSSI prefix
+    text = resp.text
+    if text.startswith(")]}'"):
+        text = text[4:].lstrip()
 
-    if is_consent_page:
-        # Extension exists (we got a redirect, not 404) but we can't scrape details
-        return StoreMeta(
-            name="",
-            description="",
-            category="",
-            developer="",
-            version="",
-            install_count="",
-            available=True,
-            source="cws",
-            verified=False,
-            established=False,
-        )
+    try:
+        outer = json.loads(text)
+        inner_str = outer[0][2]  # None when extension not on CWS
+    except (json.JSONDecodeError, IndexError, TypeError):
+        return _empty_meta("cws")
 
-    # Detect "not found" redirect — CWS redirects unknown IDs to /empty-title/
-    if "empty-title" in resp.url or "/empty" in resp.url.split("?")[0]:
+    if not inner_str:
+        # Extension not found on Chrome Web Store (Edge-only, removed, or unknown)
         return StoreMeta(
             name="",
             description="",
@@ -235,59 +249,52 @@ def fetch_cws_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
             established=False,
         )
 
-    if not available:
-        return StoreMeta(
-            name="",
-            description="",
-            category="",
-            developer="",
-            version="",
-            install_count="",
-            available=False,
-            source="cws",
-            verified=False,
-            established=False,
-        )
+    try:
+        data = json.loads(inner_str)
+    except (json.JSONDecodeError, TypeError):
+        return _empty_meta("cws")
 
-    # Extension name from <title> tag (most reliable, server-rendered)
-    name = ""
-    title_m = re.search(r"<title>([^<]+)</title>", html)
-    if title_m:
-        name = title_m.group(1).replace(" - Chrome Web Store", "").strip()
+    # Parse the main extension record (data[0])
+    rec = data[0] if data and isinstance(data[0], list) else []
 
-    # Developer name from the publisher address block
-    dev_m = re.search(r'class="mdSapd">([^<\n]+)', html)
-    developer = dev_m.group(1).strip() if dev_m else ""
+    name = rec[2] if len(rec) > 2 and isinstance(rec[2], str) else ""
+    if not name:
+        return _empty_meta("cws")
 
-    # Description from og:description
-    description = _extract_og(html, "og:description")
+    description = rec[6] if len(rec) > 6 and isinstance(rec[6], str) else ""
+    if not description:
+        description = data[6] if len(data) > 6 and isinstance(data[6], str) else ""
 
-    # User/install count: embedded in JSON array as integer after category array
-    # Pattern: ["category",null,N],1,1,USER_COUNT,
-    user_m = re.search(r'\["[^"]+",null,\d+\],(?:1|null),(?:1|null),(\d{3,}),', html)
-    install_count = f"{int(user_m.group(1)):,}" if user_m else ""
+    # Install count is a raw integer at rec[14]
+    install_raw = rec[14] if len(rec) > 14 and isinstance(rec[14], int) else 0
+    install_count = f"{install_raw:,}" if install_raw else ""
 
-    # Established publisher: position after user count in the same JSON array
-    est_m = re.search(r'\["[^"]+",null,\d+\],(?:1|null),(?:1|null),\d+,(1|null),', html)
-    established = est_m is not None and est_m.group(1) == "1"
+    # Verified (rec[8]) and established (rec[9]) are booleans in the record
+    verified = bool(rec[8]) if len(rec) > 8 else False
+    established = bool(rec[9]) if len(rec) > 9 else False
 
-    # Verified publisher: position 8 in the extension JSON array
-    ver_m = re.search(
-        rf'"{re.escape(ext_id)}","[^"]*","[^"]*",[\d.]+,\d+,(?:"[^"]*"|null),"[^"]*",(?:"[^"]*"|null),(1|null)',
-        html,
-    )
-    verified = ver_m is not None and ver_m.group(1) == "1"
+    # Category slug at rec[11] = [slug, None, id]
+    cat_info = rec[11] if len(rec) > 11 and isinstance(rec[11], list) else []
+    category = cat_info[0] if cat_info else ""
 
-    # Category from JSON
-    cat_m = re.search(r'"applicationCategory":\s*"([^"]+)"', html)
-    category = cat_m.group(1) if cat_m else ""
+    # Developer: data[10] = [email, address, ..., dev_short, company, ...]
+    dev_info = data[10] if len(data) > 10 and isinstance(data[10], list) else []
+    # Prefer company name (index 6) if present, fall back to short name (index 5)
+    developer = ""
+    if len(dev_info) > 6 and isinstance(dev_info[6], str) and dev_info[6]:
+        developer = dev_info[6]
+    elif len(dev_info) > 5 and isinstance(dev_info[5], str) and dev_info[5]:
+        developer = dev_info[5]
+
+    # Version is in the embedded manifest JSON at rec[18], or fall through
+    version = data[13] if len(data) > 13 and isinstance(data[13], str) else ""
 
     return StoreMeta(
         name=name,
         description=description,
         category=category,
         developer=developer,
-        version="",
+        version=version,
         install_count=install_count,
         available=True,
         source="cws",
