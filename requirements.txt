@@ -1,0 +1,8 @@
+# Runtime dependencies only — used by pip-audit in CI.
+# Do NOT include pip, setuptools, dev tools, or the extanalyze package itself.
+# Keep in sync with [project.dependencies] in pyproject.toml.
+click>=8.1
+requests>=2.31
+rich>=13.0
+msgpack>=1.0
+lxml>=5.0
