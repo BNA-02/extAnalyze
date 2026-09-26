@@ -2,7 +2,11 @@
   {
     "id": "COMBO_001",
     "name": "Full Browsing Exfiltration Pipeline",
-    "permissions": ["tabs", "webRequest", "<all_urls>"],
+    "permissions": [
+      "tabs",
+      "webRequest",
+      "<all_urls>"
+    ],
     "match_mode": "all",
     "severity": "CRITICAL",
     "threat": "Can intercept and exfiltrate all browser activity including URLs, request metadata, and timing",
@@ -12,7 +16,10 @@
   {
     "id": "COMBO_002",
     "name": "Cookie Theft Pipeline",
-    "permissions": ["cookies", "<all_urls>"],
+    "permissions": [
+      "cookies",
+      "<all_urls>"
+    ],
     "match_mode": "all",
     "severity": "CRITICAL",
     "threat": "Can steal session cookies for any website, enabling account takeover without credentials",
@@ -22,7 +29,10 @@
   {
     "id": "COMBO_003",
     "name": "C2 Host Communication + Persistence",
-    "permissions": ["nativeMessaging", "storage"],
+    "permissions": [
+      "nativeMessaging",
+      "storage"
+    ],
     "match_mode": "all",
     "severity": "CRITICAL",
     "threat": "Communicates with local host application (sandbox escape) and persists C2 configuration locally",
@@ -32,7 +42,11 @@
   {
     "id": "COMBO_004",
     "name": "Full Browser Identity Fingerprint",
-    "permissions": ["bookmarks", "history", "<all_urls>"],
+    "permissions": [
+      "bookmarks",
+      "history",
+      "<all_urls>"
+    ],
     "match_mode": "all",
     "severity": "HIGH",
     "threat": "Collects complete browsing identity: all visited sites, saved bookmarks, and can inject on any site",
@@ -42,7 +56,10 @@
   {
     "id": "COMBO_005",
     "name": "Clipboard + Session Exfil",
-    "permissions": ["clipboardRead", "tabs"],
+    "permissions": [
+      "clipboardRead",
+      "tabs"
+    ],
     "match_mode": "all",
     "severity": "HIGH",
     "threat": "Reads clipboard contents (2FA codes, crypto addresses, passwords) combined with full tab URL awareness",
@@ -52,7 +69,10 @@
   {
     "id": "COMBO_006",
     "name": "Universal Code Injection",
-    "permissions": ["scripting", "<all_urls>"],
+    "permissions": [
+      "scripting",
+      "<all_urls>"
+    ],
     "match_mode": "all",
     "severity": "CRITICAL",
     "threat": "Injects arbitrary JavaScript into any website - enables keyloggers, form stealers, UI overlays on all sites",
@@ -62,7 +82,10 @@
   {
     "id": "COMBO_007",
     "name": "MV2 Full Traffic MITM",
-    "permissions": ["webRequestBlocking", "<all_urls>"],
+    "permissions": [
+      "webRequestBlocking",
+      "<all_urls>"
+    ],
     "match_mode": "all",
     "mv2_only": true,
     "severity": "CRITICAL",
@@ -73,7 +96,9 @@
   {
     "id": "COMBO_008",
     "name": "Debugger Full Tab Control",
-    "permissions": ["debugger"],
+    "permissions": [
+      "debugger"
+    ],
     "match_mode": "any",
     "severity": "CRITICAL",
     "threat": "Chrome DevTools Protocol gives full control of any tab: network interception, JS execution, screenshot, DOM read",
@@ -83,7 +108,10 @@
   {
     "id": "COMBO_009",
     "name": "OAuth Token Theft + Storage",
-    "permissions": ["identity", "storage"],
+    "permissions": [
+      "identity",
+      "storage"
+    ],
     "match_mode": "all",
     "severity": "HIGH",
     "threat": "Access OAuth tokens for Google/third-party services and persist them for later exfiltration",
@@ -93,7 +121,9 @@
   {
     "id": "COMBO_010",
     "name": "MV3 Hidden Execution Context",
-    "permissions": ["offscreen"],
+    "permissions": [
+      "offscreen"
+    ],
     "match_mode": "any",
     "mv3_only": true,
     "severity": "MEDIUM",
@@ -104,7 +134,10 @@
   {
     "id": "COMBO_011",
     "name": "Dynamic Redirect Rules via Storage",
-    "permissions": ["declarativeNetRequestWithHostAccess", "storage"],
+    "permissions": [
+      "declarativeNetRequestWithHostAccess",
+      "storage"
+    ],
     "match_mode": "all",
     "mv3_only": true,
     "severity": "HIGH",
@@ -116,7 +149,9 @@
     "id": "COMBO_012",
     "name": "Non-CWS Update Channel",
     "permissions": [],
-    "manifest_signals": ["update_url_non_google"],
+    "manifest_signals": [
+      "update_url_non_google"
+    ],
     "match_mode": "signals",
     "severity": "HIGH",
     "threat": "Extension receives updates from attacker-controlled server, enabling silent payload delivery post-install",
@@ -126,27 +161,35 @@
   {
     "id": "COMBO_013",
     "name": "Extension Management Control",
-    "permissions": ["management"],
+    "permissions": [
+      "management"
+    ],
     "match_mode": "any",
     "severity": "HIGH",
-    "threat": "Can enumerate, disable, or uninstall other extensions — used to disable security tools (ad blockers, password managers, AV extensions) and perform reconnaissance of the installed extension ecosystem",
+    "threat": "Can enumerate, disable, or uninstall other extensions \u2014 used to disable security tools (ad blockers, password managers, AV extensions) and perform reconnaissance of the installed extension ecosystem",
     "mv2_note": "management permission grants full extension lifecycle control",
-    "mv3_note": "Identical in MV3 — management API is unchanged"
+    "mv3_note": "Identical in MV3 \u2014 management API is unchanged"
   },
   {
     "id": "COMBO_013B",
     "name": "Extension Management + Storage (Persistent Recon)",
-    "permissions": ["management", "storage"],
+    "permissions": [
+      "management",
+      "storage"
+    ],
     "match_mode": "all",
     "severity": "HIGH",
-    "threat": "Enumerates installed extensions and persists the list — enables targeted disabling of security tools, builds extension fingerprint for attacker C2",
+    "threat": "Enumerates installed extensions and persists the list \u2014 enables targeted disabling of security tools, builds extension fingerprint for attacker C2",
     "mv2_note": "Extension enumeration + persistent storage = full reconnaissance loop",
     "mv3_note": "Identical in MV3"
   },
   {
     "id": "COMBO_014",
     "name": "Proxy + Storage C2 Config",
-    "permissions": ["proxy", "storage"],
+    "permissions": [
+      "proxy",
+      "storage"
+    ],
     "match_mode": "all",
     "severity": "CRITICAL",
     "threat": "Routes all browser traffic through configurable proxy; C2 can update proxy target via storage sync",
@@ -157,11 +200,115 @@
     "id": "COMBO_015",
     "name": "Content Script Universal Injection",
     "permissions": [],
-    "manifest_signals": ["content_scripts_all_urls"],
+    "manifest_signals": [
+      "content_scripts_all_urls"
+    ],
     "match_mode": "signals",
     "severity": "HIGH",
     "threat": "Content scripts declared in manifest that run on all URLs - passive injection without scripting API at runtime",
     "mv2_note": "Declared content scripts run automatically on every page match",
     "mv3_note": "Same in MV3 - content_scripts in manifest still auto-inject"
+  },
+  {
+    "id": "COMBO_016",
+    "name": "Sandbox Evasion Suite",
+    "permissions": [
+      "system.cpu",
+      "system.memory"
+    ],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "Combined CPU + RAM fingerprinting forms a sandbox/VM detection suite \u2014 malware suppresses payload execution in analysis environments by detecting single-core, low-RAM VMs",
+    "mv2_note": "Classic anti-analysis pattern used by enterprise spyware",
+    "mv3_note": "Same in MV3"
+  },
+  {
+    "id": "COMBO_017",
+    "name": "Covert History Reconstruction via Favicon",
+    "permissions": [
+      "favicon"
+    ],
+    "match_mode": "any",
+    "severity": "MEDIUM",
+    "threat": "favicon permission allows probing visited URLs without the history permission \u2014 attacker can infer browsing history by requesting favicons for target URLs silently",
+    "mv2_note": "History inference without triggering history permission alerts",
+    "mv3_note": "Same in MV3"
+  },
+  {
+    "id": "COMBO_018",
+    "name": "GCM Covert C2 Channel",
+    "permissions": [
+      "gcm",
+      "storage"
+    ],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "Receives C2 commands via Google Cloud Messaging (blends with legitimate push traffic) and persists state via storage \u2014 C2 channel bypasses domain-based network firewalls",
+    "mv2_note": "GCM traffic uses Google endpoints \u2014 harder to block than direct attacker domains",
+    "mv3_note": "Same in MV3"
+  },
+  {
+    "id": "COMBO_019",
+    "name": "Evidence Destruction",
+    "permissions": [
+      "browsingData"
+    ],
+    "match_mode": "any",
+    "severity": "HIGH",
+    "threat": "browsingData API can erase all forensic evidence (cookies, history, passwords) post-exfiltration \u2014 used to cover tracks after data theft",
+    "mv2_note": "Anti-forensic pattern common in banking trojans",
+    "mv3_note": "Same in MV3"
+  },
+  {
+    "id": "COMBO_020",
+    "name": "Universal Script Injection (userScripts API)",
+    "permissions": [
+      "userScripts"
+    ],
+    "match_mode": "any",
+    "mv3_only": true,
+    "severity": "CRITICAL",
+    "threat": "userScripts API allows injection of arbitrary JS into any page \u2014 functionally bypasses MV3 CSP restrictions. Combined with host_permissions grants universal code execution across all sites",
+    "mv2_note": "N/A \u2014 MV3 only API",
+    "mv3_note": "Specifically designed to enable user script managers but equally usable by malicious extensions to inject arbitrary payloads"
+  },
+  {
+    "id": "COMBO_021",
+    "name": "WebAuthn/Passkey MITM",
+    "permissions": [
+      "webAuthenticationProxy"
+    ],
+    "match_mode": "any",
+    "severity": "CRITICAL",
+    "threat": "Intercepts FIDO2/passkey authentication \u2014 can silently approve auth requests, relay tokens to attacker, or block legitimate authentication. Undermines hardware security key protection entirely",
+    "mv2_note": "N/A \u2014 recent Chrome/Edge only",
+    "mv3_note": "Extremely rare in legitimate extensions \u2014 any non-passkey-manager extension requesting this is a critical red flag"
+  },
+  {
+    "id": "COMBO_022",
+    "name": "Full Device Fingerprint Suite",
+    "permissions": [
+      "system.cpu",
+      "system.memory",
+      "system.display"
+    ],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "CPU + RAM + screen resolution combined creates a near-unique, persistent device fingerprint that survives cookie clearing and browser restarts \u2014 enables cross-session tracking",
+    "mv2_note": "Fingerprinting without any user-visible signals",
+    "mv3_note": "Same in MV3"
+  },
+  {
+    "id": "COMBO_023",
+    "name": "Unlimited Local Data Buffer",
+    "permissions": [
+      "unlimitedStorage",
+      "<all_urls>"
+    ],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "Unlimited local storage + universal site access = can accumulate unlimited stolen data (cookies, credentials, page content) locally before bulk exfiltration, evading bandwidth-based detection",
+    "mv2_note": "Large local buffer enables slow-exfil pattern that evades DLP",
+    "mv3_note": "Same in MV3"
   }
 ]
