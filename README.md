@@ -1,98 +1,246 @@
 # extanalyze
 
-Browser extension static analysis and threat intelligence CLI.
+Static security analysis and threat intelligence CLI for browser extensions.
 
-Analyzes Chrome, Edge, and Firefox extensions against multiple threat intelligence
-databases and performs permission risk analysis with MV2/MV3 awareness.
+Supports Chrome, Edge (Chromium), and Firefox. Analyzes extensions without
+executing them — downloads the CRX/XPI, parses the manifest, scores every
+permission, detects dangerous combinations, and cross-references three threat
+intelligence databases.
+
+---
 
 ## Features
 
-- **Threat Intelligence**: TPCI (7,400+ known malicious extensions), malicious_extension_sentry, Google CRX API malware flag
-- **Manifest Analysis**: Full MV2/MV3 permission parsing with per-permission abuse description
-- **Permission Risk Scoring**: Taxonomy of 30+ permissions with CRITICAL/HIGH/MEDIUM/LOW ratings
-- **Dangerous Combo Detection**: 15 combo rules (Universal Code Injection, Cookie Theft Pipeline, C2 + Persistence, etc.)
-- **Host Scope Assessment**: BROAD / SCOPED / MINIMAL classification — flags `<all_urls>` vs scoped domain lists
-- **Permission Necessity**: Category-based analysis of whether permissions match the extension's stated purpose
-- **Publisher Trust**: Verified/Established publisher status from Chrome Web Store
-- **Bulk analysis**: ThreadPoolExecutor with progress bar, TI caches pre-loaded once
-- **Output formats**: Rich terminal, JSON, CSV, HTML (single + bulk aggregated reports)
+**Threat Intelligence**
+- [TPCI](https://github.com/The-Privacy-Commons-Institute/chrome-mal-ids) — researcher-confirmed malicious extensions
+- [Malext/Sentry](https://github.com/malvuln/malext) — community malware database with SHA256 cross-check post-download
+- Store liveness — Chrome CRX API, Edge Add-ons API, Firefox AMO availability check
 
-## Install
+**Static Permission Analysis**
+- 58-entry permission taxonomy with MV2 and MV3 specific abuse descriptions
+- 11 CRITICAL and 16 HIGH risk permissions fully documented
+- 28 dangerous permission combination rules (COMBO_001 through COMBO_027)
+- Host permission scope classification: BROAD / SCOPED / MINIMAL
+- WebSocket (`ws://`, `wss://`) patterns correctly separated from named permissions
+- Permission necessity mapping against 15 extension categories
+
+**Multi-Browser**
+- Chrome: Chrome Web Store JSON API (no HTML scraping)
+- Edge: Microsoft Edge Add-ons product API
+- Firefox: Firefox AMO public REST API
+- Auto-detection: probes Chrome CRX API + Edge product API when no `--browser` flag given
+- Cross-listed extensions detected and annotated (Chrome + Edge)
+- Built-in browser extensions (PDF Viewer, Media Router) recognized and skipped
+
+**MV2 vs MV3 awareness**
+- Manifest version detected and displayed on every analysis
+- Permission abuse descriptions are version-aware
+- Combos gate on MV2-only / MV3-only where relevant
+- `webRequestBlocking` (MV2-only MITM) distinguished from read-only MV3 webRequest
+
+**Output**
+- Rich terminal report (color-coded risk, tables, combo details)
+- JSON (`--output json`) for CI/pipeline integration
+- Bulk mode: `--file ids.txt` with multithreaded analysis
+
+---
+
+## Installation
 
 ```bash
-# Development (editable)
-git clone https://github.com/YOUR_USERNAME/extanalyze
+git clone <repo-url>
 cd extanalyze
-python -m venv venv && source venv/bin/activate
-pip install -e ".[dev]"
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
 ```
+
+Python 3.10+ required.
+
+---
 
 ## Usage
 
 ```bash
-# Single extension (auto-detects browser from ID format)
+# Single extension — auto-detect browser
 extanalyze analyze cjpalhdlnbpafiamejdnhcphjbkeiagm
 
 # Force browser
-extanalyze analyze ublock-origin --browser firefox
-
-# All output formats
-extanalyze analyze bmnlcjabgnpnenekpadlanbbkooimhnj \
-  --output all --out-dir ./reports
+extanalyze analyze cjpalhdlnbpafiamejdnhcphjbkeiagm --browser chrome
+extanalyze analyze amnbcmdbanbkjhnfoeceemmmdiepnbpp --browser edge
+extanalyze analyze uBlock0@raymondhill.net --browser firefox
 
 # Bulk analysis from file
-extanalyze analyze --file ids.txt --output csv --out-dir ./reports --workers 12
+extanalyze analyze --file ids.txt
+extanalyze analyze --file ids.txt --browser edge
 
-# With local CRX catalog for name enrichment (386k extensions)
-extanalyze analyze --file ids.txt \
-  --catalog /path/to/2023-10-18_list_of_all_crx.csv \
-  --output all --out-dir ./reports
+# JSON output
+extanalyze analyze <id> --output json
+extanalyze analyze --file ids.txt --output json > results.json
 
 # Cache management
 extanalyze cache status
 extanalyze cache clear
 ```
 
-## Threat Intelligence Sources
+**ids.txt format** — one extension ID per line, blank lines and `#` comments ignored:
 
-| Source | Coverage | Auth |
-|--------|----------|------|
-| [TPCI](https://github.com/The-Privacy-Commons-Institute/chrome-mal-ids) | 7,484 Chrome/Edge extensions | Free |
-| [malicious_extension_sentry](https://github.com/toborrm9/malicious_extension_sentry) | 6,794 extensions with SHA256 | Free |
-| Google CRX API | `_malware=true` flag (authoritative) | Free |
-| VirusTotal | File hash reputation | API key (optional) |
+```
+# Chrome extensions
+cjpalhdlnbpafiamejdnhcphjbkeiagm
+bmnlcjabgnpnenekpadlanbbkooimhnj
 
-TI datasets are cached locally for 24 hours (`~/.extanalyze/cache/`).
-
-## Pipeline
-
-CI runs on every push and PR:
-
-- **Lint** — ruff check + format
-- **SAST** — bandit (medium+ severity/confidence), results uploaded as SARIF to GitHub Security tab
-- **SCA** — pip-audit against OSV + PyPI advisory database
-- **Tests** — pytest on Python 3.10–3.13 with coverage
-- **Build** — wheel + sdist, twine check
-
-```bash
-# Run all checks locally before pushing
-ruff check extanalyze/ && ruff format --check extanalyze/
-bandit -r extanalyze/ -ll -ii
-pytest tests/ --cov=extanalyze --cov-fail-under=60
+# Firefox
+uBlock0@raymondhill.net
 ```
 
-## Risk Levels
+---
 
-| Level | Score | Meaning |
-|-------|-------|---------|
-| SAFE | 0 | No signals |
-| LOW | 1–20 | Informational |
-| MEDIUM | 21–40 | Warrants review |
-| HIGH | 41–70 | Confirmed TI hit or critical combo |
-| CRITICAL | 71+ | Confirmed malicious — Google/researcher confirmed |
+## Risk Scoring
 
-Any confirmed TI hit (TPCI, Sentry blocklist, Google malware flag) forces minimum HIGH regardless of score.
+| Verdict  | Score  |
+|----------|--------|
+| SAFE     | 0      |
+| LOW      | 1–15   |
+| MEDIUM   | 16–35  |
+| HIGH     | 36–70  |
+| CRITICAL | 71+    |
+
+Score sources: TI database hits (short-circuit to minimum HIGH on confirmed malicious),
+permission risk scores, dangerous combo points, unexpected permissions for category.
+
+---
+
+## Permission Taxonomy
+
+58 permissions documented with:
+- Risk score (1–10)
+- Sensitivity (LOW / MEDIUM / HIGH / CRITICAL)
+- MV2 abuse scenario
+- MV3 abuse scenario (or delta from MV2)
+- Data exfil / C2 / privilege escalation flags
+
+Selected CRITICAL entries:
+
+| Permission | Score | Why |
+|---|---|---|
+| `webRequestFilterResponse.serviceWorkerScript` | 10 | Inject code into target site's service worker — runs at site origin, persists after extension removal |
+| `debugger` | 10 | Full tab control: intercept network at protocol level, read JS vars, capture screenshots |
+| `webAuthenticationProxy` | 9 | MITM on FIDO2/passkey authentication |
+| `userScripts` | 9 | Arbitrary JS injection bypassing MV3 CSP restrictions |
+| `webRequestFilterResponse` | 9 | Response body MITM — read and modify page content as it streams |
+| `nativeMessaging` | 9 | Full browser sandbox escape to host OS |
+| `vpnProvider` | 9 | Route all device traffic through attacker infrastructure (ChromeOS) |
+
+---
+
+## Dangerous Combo Detection
+
+28 rules fire when specific permission combinations appear together.
+Examples:
+
+| ID | Name | Severity |
+|---|---|---|
+| COMBO_002 | Cookie Theft Pipeline | CRITICAL |
+| COMBO_006 | Universal Code Injection | CRITICAL |
+| COMBO_025 | Service Worker Script Injection | CRITICAL |
+| COMBO_024 | Response Body MITM (filterResponseData) | CRITICAL |
+| COMBO_001 | Full MITM Stack (MV2) | CRITICAL |
+| COMBO_016 | Sandbox Evasion Suite (cpu+memory) | HIGH |
+| COMBO_027 | DNS Tunnel Exfiltration | HIGH |
+| COMBO_019 | Evidence Destruction (browsingData) | HIGH |
+
+---
+
+## Threat Intelligence Sources
+
+| Source | Type | Update |
+|---|---|---|
+| TPCI | Researcher-confirmed malicious extension IDs | On first run, cached 24h |
+| Malext/Sentry | Community malware DB + SHA256 post-download | On first run, cached 24h |
+| Chrome CRX API | Liveness + Google malware flag | Live per analysis |
+| Edge Add-ons API | Liveness + metadata | Live per analysis |
+| Firefox AMO | Liveness + metadata | Live per analysis |
+
+Cache lives at `~/.extanalyze/cache/`.
+
+---
+
+## Development
+
+```bash
+pip install -e '.[dev]'
+
+# Lint
+ruff check extanalyze/
+ruff format extanalyze/
+
+# Tests (72 unit tests, no network)
+pytest tests/ -v
+
+# SAST
+bandit -r extanalyze/ -c pyproject.toml
+
+# SCA
+pip-audit
+```
+
+CI runs on push/PR via `.github/workflows/ci.yml`:
+lint → format check → unit tests → bandit → pip-audit.
+
+---
+
+## Project Layout
+
+```
+extanalyze/
+  cli.py                  Click CLI entrypoint
+  worker.py               Single + bulk analysis pipeline
+  core/
+    ingestion.py          ID parsing, browser detection, bulk file loading
+    downloader.py         CRX/XPI download (Chrome, Edge, Firefox endpoints)
+    extractor.py          CRX/XPI unpack to temp dir
+    manifest_parser.py    manifest.json parsing, MV2/MV3, permission extraction
+    store_meta.py         CWS JSON API, Edge product API, AMO API, probe_stores()
+    enrichment.py         Catalog lookup, builtin registry, categorization
+  analysis/
+    permissions.py        Permission scoring, host scope, combo detection
+    categorizer.py        Extension category inference from name/description
+  intel/
+    tpci.py               TPCI dataset loader and ID lookup
+    sentry.py             Malext/Sentry dataset loader, ID + SHA256 lookup
+  scoring/
+    aggregator.py         Risk score + reason assembly
+    result.py             AnalysisResult dataclass
+  output/
+    text_reporter.py      Rich terminal output
+    html_reporter.py      HTML report
+  data/
+    permissions_taxonomy.json    58 permissions with abuse descriptions
+    danger_combos.json           28 combination rules
+    category_baselines.json      15 extension categories with expected permissions
+    crx_catalog.csv              Chrome extension catalog snapshot (2023-10-18)
+tests/
+  test_ingestion.py
+  test_manifest_parser.py
+  test_permissions.py
+  test_aggregator.py
+  test_intel.py
+.github/workflows/ci.yml
+```
+
+---
+
+## Limitations
+
+- **Static analysis only** — no dynamic execution, no runtime network capture
+- **CRX catalog snapshot** — Chrome catalog dated 2023-10-18; newer extensions fall back to live store metadata
+- **CWS JSON API** — undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend
+- **Permission necessity mapping** — rule-based heuristics per category, not semantic reasoning
+- **No Firefox built-in registry** — Firefox built-in extensions not enumerated
+
+---
 
 ## License
 
-MIT
+Private. All rights reserved.
