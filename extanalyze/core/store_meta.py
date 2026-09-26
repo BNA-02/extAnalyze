@@ -21,6 +21,9 @@ _HEADERS = {
 
 _CWS_DETAIL_URL = "https://chromewebstore.google.com/detail/{ext_id}"
 _AMO_API_URL = "https://addons.mozilla.org/api/v5/addons/addon/{ext_id}/"
+_EDGE_PRODUCT_API_URL = (
+    "https://microsoftedge.microsoft.com/addons/getproductdetailsbycrxid/{ext_id}"
+)
 _CRX_LIVENESS_URL = (
     "https://clients2.google.com/service/update2/crx"
     "?response=updatecheck"
@@ -57,6 +60,70 @@ class LivenessResult:
     store_likely_removed: bool  # noupdate without malware = almost certainly removed
     status_xml: str  # raw status value from XML for logging
     raw_response: str  # first 500 chars of response for debugging
+
+
+def fetch_edge_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
+    """
+    Fetch Edge Add-ons metadata via the public product API.
+
+    The Edge product API returns: name, developer, category, activeInstallCount,
+    averageRating, version, and the full manifest JSON. It is the authoritative
+    source for Edge extensions — never query CWS for Edge IDs.
+
+    Also returns 'isBadgedAsFeatured' (established) and publisher metadata.
+    """
+    url = _EDGE_PRODUCT_API_URL.format(ext_id=ext_id)
+    try:
+        resp = requests.get(url, headers=_HEADERS, timeout=timeout)
+    except requests.RequestException:
+        return _empty_meta("edge")
+
+    if resp.status_code != 200:
+        return StoreMeta(
+            name="",
+            description="",
+            category="",
+            developer="",
+            version="",
+            install_count="",
+            available=False,
+            source="edge",
+            verified=False,
+            established=False,
+        )
+
+    data = resp.json()
+    name = data.get("name", "")
+    if not name:
+        return _empty_meta("edge")
+
+    description = data.get("shortDescription", "") or data.get("description", "")
+    category = data.get("category", "")
+    developer = data.get("developer", "")
+    version = data.get("version", "")
+    installs = data.get("activeInstallCount", "")
+    install_count = f"{installs:,}" if isinstance(installs, int) else str(installs)
+
+    # Edge uses 'isBadgedAsFeatured' for curated/featured extensions.
+    # Publisher verification is implied by the availability field including 'License'.
+    established = bool(data.get("isBadgedAsFeatured", False))
+    # Verified: Edge doesn't have an explicit flag, but rated publishers with
+    # 'License' in availability list have been reviewed by Microsoft.
+    availability = data.get("availability", [])
+    verified = "License" in availability
+
+    return StoreMeta(
+        name=name,
+        description=description,
+        category=category,
+        developer=developer,
+        version=version,
+        install_count=install_count,
+        available=True,
+        source="edge",
+        verified=verified,
+        established=established,
+    )
 
 
 def fetch_cws_meta(ext_id: str, timeout: int = 10) -> StoreMeta:

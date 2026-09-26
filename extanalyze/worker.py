@@ -26,6 +26,7 @@ from .core.store_meta import (
     check_crx_liveness,
     fetch_amo_meta,
     fetch_cws_meta,
+    fetch_edge_meta,
 )
 from .intel import sentry as sentry_mod
 from .intel import tpci as tpci_mod
@@ -63,6 +64,10 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
         try:
             if browser == "firefox":
                 store = fetch_amo_meta(ext_id)
+            elif browser == "edge":
+                # Edge has its own product API — never use CWS for Edge IDs.
+                # CWS returns "Chrome Web Store" homepage for unknown IDs.
+                store = fetch_edge_meta(ext_id)
             else:
                 store = fetch_cws_meta(ext_id)
         except Exception:
@@ -80,9 +85,19 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
             )
 
     # ── Step 2: Google CRX liveness (rate limited) ────────────────────────
+    # Edge-only IDs return error-unknownApplication from Google — skip for Edge.
     with _google_semaphore:
         try:
-            liveness = check_crx_liveness(ext_id)
+            if browser == "edge":
+                # Use store availability as the liveness signal instead
+                liveness = LivenessResult(
+                    google_malware_confirmed=False,
+                    store_likely_removed=not store.available,
+                    status_xml="edge-store",
+                    raw_response="",
+                )
+            else:
+                liveness = check_crx_liveness(ext_id)
         except Exception:
             liveness = LivenessResult(
                 google_malware_confirmed=False,
