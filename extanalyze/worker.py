@@ -89,8 +89,20 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
                 from .core.enrichment import _BUILTIN_EXTENSIONS
 
                 if ext_id in _BUILTIN_EXTENSIONS:
-                    browser = "chrome"
-                    store = _empty_store("builtin")
+                    b = _BUILTIN_EXTENSIONS[ext_id]
+                    browser = b.get("browser", "chrome")
+                    store = StoreMeta(
+                        name=b.get("name", ""),
+                        description=b.get("description", ""),
+                        category=b.get("category", ""),
+                        developer="Google LLC",
+                        version="",
+                        install_count="",
+                        available=True,
+                        source="builtin",
+                        verified=True,
+                        established=True,
+                    )
                 else:
                     # No browser specified for a 32-char CRX ID — probe both stores
                     # to determine where the extension actually lives.
@@ -139,15 +151,23 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
             )
 
     # ── Step 2: Google CRX liveness (rate limited) ────────────────────────
-    # Edge-only IDs return error-unknownApplication from Google — skip for Edge.
+    # Skip for Edge-only IDs (returns error-unknownApplication from Google)
+    # and builtins (not in CWS, no useful signal).
+    is_builtin = store.source == "builtin"
     with _google_semaphore:
         try:
             if browser == "edge":
-                # Use store availability as the liveness signal instead
                 liveness = LivenessResult(
                     google_malware_confirmed=False,
                     store_likely_removed=not store.available,
                     status_xml="edge-store",
+                    raw_response="",
+                )
+            elif is_builtin:
+                liveness = LivenessResult(
+                    google_malware_confirmed=False,
+                    store_likely_removed=False,
+                    status_xml="builtin",
                     raw_response="",
                 )
             else:
@@ -176,43 +196,48 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
     download_size = 0
     crx_format = ""
 
-    try:
-        dl = download(ext_id, browser)
-        download_sha256 = dl.sha256
-        download_size = dl.size_bytes
-        crx_format = dl.crx_format
-
-        # Cross-check SHA256 with sentry after download
-        sentry_result = sentry_mod.lookup(ext_id, downloaded_sha256=download_sha256)
-
-        # ── Step 6: Extract ───────────────────────────────────────────────
+    if is_builtin:
+        # Builtin extensions are baked into the browser binary — no CRX to download.
+        # We know what they are from the registry; skip download entirely.
+        crx_format = "builtin"
+    else:
         try:
-            extract_result = extract(dl)
+            dl = download(ext_id, browser)
+            download_sha256 = dl.sha256
+            download_size = dl.size_bytes
+            crx_format = dl.crx_format
 
-            # ── Step 7: Parse manifest ────────────────────────────────────
+            # Cross-check SHA256 with sentry after download
+            sentry_result = sentry_mod.lookup(ext_id, downloaded_sha256=download_sha256)
+
+            # ── Step 6: Extract ───────────────────────────────────────────────
             try:
-                manifest = parse_manifest(extract_result.manifest_path)
+                extract_result = extract(dl)
 
-                # ── Step 8: Categorize and analyze permissions ────────────
-                text_for_cat = (
-                    (enrichment.name or "")
-                    + " "
-                    + (enrichment.description or store.description or manifest.description or "")
-                )
-                category, confidence = categorize(enrichment.name or "", text_for_cat)
+                # ── Step 7: Parse manifest ────────────────────────────────────
+                try:
+                    manifest = parse_manifest(extract_result.manifest_path)
 
-                perm_analysis = analyze_permissions(manifest, category, confidence)
+                    # ── Step 8: Categorize and analyze permissions ────────────
+                    text_for_cat = (
+                        (enrichment.name or "")
+                        + " "
+                        + (enrichment.description or store.description or manifest.description or "")
+                    )
+                    category, confidence = categorize(enrichment.name or "", text_for_cat)
 
-            except Exception as e:
-                manifest_error = str(e)
+                    perm_analysis = analyze_permissions(manifest, category, confidence)
 
-        except ExtractionError as e:
-            download_error = f"Extraction failed: {e}"
+                except Exception as e:
+                    manifest_error = str(e)
 
-    except ExtensionNotDownloadableError as e:
-        download_error = str(e)
-    except Exception as e:
-        download_error = f"Unexpected download error: {e}"
+            except ExtractionError as e:
+                download_error = f"Extraction failed: {e}"
+
+        except ExtensionNotDownloadableError as e:
+            download_error = str(e)
+        except Exception as e:
+            download_error = f"Unexpected download error: {e}"
 
     # ── Step 9: Risk scoring ──────────────────────────────────────────────
     # Create minimal objects for scoring if analysis failed
@@ -252,6 +277,7 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
         analyzed_at=datetime.utcnow(),
         download_error=download_error,
         manifest_error=manifest_error,
+        is_builtin=is_builtin,
     )
 
 

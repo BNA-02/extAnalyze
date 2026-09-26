@@ -59,7 +59,12 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
     meta_table.add_row("Publisher Trust", " · ".join(trust_parts))
     meta_table.add_row("Install Count", result.store.install_count or "[dim]unknown[/dim]")
     meta_table.add_row("Store Status", _store_status(result))
-    meta_table.add_row("CRX Format", result.crx_format or "[dim]not downloaded[/dim]")
+    meta_table.add_row(
+        "CRX Format",
+        "[dim]builtin — baked into browser[/dim]"
+        if result.is_builtin
+        else (result.crx_format or "[dim]not downloaded[/dim]"),
+    )
     meta_table.add_row(
         "SHA256", result.download_sha256[:16] + "..." if result.download_sha256 else "[dim]-[/dim]"
     )
@@ -71,10 +76,16 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
     console.print(meta_table)
 
     # ── Risk Banner ───────────────────────────────────────────────────────
-    risk_text = Text(
-        f"  {result.risk.level}  [Score: {result.risk.score}]  ", style=f"bold {risk_color}"
-    )
-    console.print(Panel(risk_text, title="RISK VERDICT", border_style=risk_color, expand=False))
+    if result.is_builtin:
+        console.print(
+            "\n[dim]Built-in browser extension — shipped with the browser binary, "
+            "not available as a downloadable CRX. No static analysis performed.[/dim]"
+        )
+    else:
+        risk_text = Text(
+            f"  {result.risk.level}  [Score: {result.risk.score}]  ", style=f"bold {risk_color}"
+        )
+        console.print(Panel(risk_text, title="RISK VERDICT", border_style=risk_color, expand=False))
 
     # ── Threat Intelligence ───────────────────────────────────────────────
     console.print("\n[bold underline]Threat Intelligence[/bold underline]")
@@ -100,14 +111,15 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
         _print_permissions(console, result)
         _print_combos(console, result)
         _print_necessity(console, result)
-    elif result.download_error or result.manifest_error:
+    elif not result.is_builtin and (result.download_error or result.manifest_error):
         reason = result.download_error or result.manifest_error
         console.print(f"\n[dim]Static analysis skipped — {reason}[/dim]")
 
-    if result.download_error:
-        console.print(f"\n[red][!] Download failed:[/red] {result.download_error}")
-    if result.manifest_error:
-        console.print(f"\n[red][!] Manifest parse error:[/red] {result.manifest_error}")
+    if not result.is_builtin:
+        if result.download_error:
+            console.print(f"\n[red][!] Download failed:[/red] {result.download_error}")
+        if result.manifest_error:
+            console.print(f"\n[red][!] Manifest parse error:[/red] {result.manifest_error}")
 
     # ── Risk Factors ───────────────────────────────────────────────────────
     # Only show risk factors when there is something meaningful to show.
