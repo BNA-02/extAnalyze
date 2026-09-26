@@ -229,7 +229,12 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
                     text_for_cat = (
                         (enrichment.name or "")
                         + " "
-                        + (enrichment.description or store.description or manifest.description or "")
+                        + (
+                            enrichment.description
+                            or store.description
+                            or manifest.description
+                            or ""
+                        )
                     )
                     category, confidence = categorize(enrichment.name or "", text_for_cat)
 

@@ -43,6 +43,6 @@ class AnalysisResult:
 
     # Metadata
     analyzed_at: datetime = field(default_factory=datetime.utcnow)
-    download_error: str = ""   # non-empty if download failed
-    manifest_error: str = ""   # non-empty if manifest parse failed
-    is_builtin: bool = False   # True for extensions baked into the browser
+    download_error: str = ""  # non-empty if download failed
+    manifest_error: str = ""  # non-empty if manifest parse failed
+    is_builtin: bool = False  # True for extensions baked into the browser
