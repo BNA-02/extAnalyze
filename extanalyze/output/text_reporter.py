@@ -244,7 +244,11 @@ def _print_permissions(console: Console, result: AnalysisResult) -> None:
             host_table.add_column("Domain Pattern", style="dim cyan")
             host_table.add_column("Type", width=10)
             for hp in remaining_hosts:
-                kind = "wildcard" if "*" in hp else "exact"
+                kind = "ws wildcard" if hp.startswith("ws") and "*" in hp else (
+                    "websocket" if hp.startswith("ws") else (
+                        "wildcard" if "*" in hp else "exact"
+                    )
+                )
                 host_table.add_row(hp, kind)
             console.print(host_table)
         elif scope.is_broad:
