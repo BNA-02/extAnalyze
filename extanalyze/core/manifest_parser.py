@@ -12,7 +12,15 @@ from pathlib import Path
 
 # URL pattern: anything that looks like a host permission
 _URL_PATTERN_RE = re.compile(r"^(https?://|wss?://|\*://|<all_urls>|file://|\*)")
-_GOOGLE_UPDATE_DOMAINS = {"clients2.google.com", "update.googleapis.com", "gvt1.com", "gvt2.com"}
+_GOOGLE_UPDATE_DOMAINS = {
+    "clients2.google.com",
+    "update.googleapis.com",
+    "gvt1.com",
+    "gvt2.com",
+    # Edge Add-ons official update channel — not attacker-controlled
+    "edge.microsoft.com",
+    "extensionwebstorebase",
+}
 
 
 @dataclass

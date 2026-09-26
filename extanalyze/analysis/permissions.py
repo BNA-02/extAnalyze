@@ -116,8 +116,8 @@ def analyze(
     # Detect manifest signals for combo matching
     manifest_signals = _collect_signals(manifest)
 
-    # Combo detection
-    combo_hits = _detect_combos(all_perms, manifest.manifest_version, manifest_signals)
+    # Combo detection — pass manifest so signals can include contextual values
+    combo_hits = _detect_combos(all_perms, manifest.manifest_version, manifest_signals, manifest)
 
     # Host scope assessment
     host_scope = _assess_host_scope(list(host_perms), has_all_urls)
@@ -203,7 +203,12 @@ def _collect_signals(manifest: ExtensionManifest) -> set[str]:
     return signals
 
 
-def _detect_combos(all_perms: set[str], mv: int, signals: set[str]) -> list[ComboHit]:
+def _detect_combos(
+    all_perms: set[str],
+    mv: int,
+    signals: set[str],
+    manifest: ExtensionManifest | None = None,
+) -> list[ComboHit]:
     hits: list[ComboHit] = []
 
     for combo in COMBOS:
@@ -222,13 +227,19 @@ def _detect_combos(all_perms: set[str], mv: int, signals: set[str]) -> list[Comb
             matched = [s for s in required_signals if s in signals]
             if not matched:
                 continue
+
+            # For update_url_non_google, show the actual URL so the report is actionable
+            matched_display = list(matched)
+            if "update_url_non_google" in matched and manifest and manifest.update_url:
+                matched_display = [f"update_url → {manifest.update_url}"]
+
             hits.append(
                 ComboHit(
                     combo_id=combo["id"],
                     name=combo["name"],
                     severity=combo["severity"],
                     threat=combo["threat"],
-                    matched_permissions=matched,
+                    matched_permissions=matched_display,
                     mv_note=combo.get("mv3_note" if mv == 3 else "mv2_note", ""),
                     mv2_only=combo.get("mv2_only", False),
                     mv3_only=combo.get("mv3_only", False),

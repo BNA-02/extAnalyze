@@ -95,18 +95,26 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
     console.print(ti_table)
 
     # ── Permissions Table ─────────────────────────────────────────────────
+    # ── Static Analysis ────────────────────────────────────────────────────
     if result.manifest and result.perm_analysis:
         _print_permissions(console, result)
         _print_combos(console, result)
         _print_necessity(console, result)
+    elif result.download_error or result.manifest_error:
+        reason = result.download_error or result.manifest_error
+        console.print(f"\n[dim]Static analysis skipped — {reason}[/dim]")
 
     if result.download_error:
         console.print(f"\n[red][!] Download failed:[/red] {result.download_error}")
     if result.manifest_error:
         console.print(f"\n[red][!] Manifest parse error:[/red] {result.manifest_error}")
 
-    # ── Reasons ───────────────────────────────────────────────────────────
-    if result.risk.reasons:
+    # ── Risk Factors ───────────────────────────────────────────────────────
+    # Only show risk factors when there is something meaningful to show.
+    # If there is no manifest (download failed) and no TI hits, suppress the
+    # section entirely — an empty reasons list from a failed download is noise.
+    has_ti_hit = result.tpci.hit or result.sentry.hit or result.liveness.google_malware_confirmed
+    if result.risk.reasons and (result.manifest is not None or has_ti_hit):
         console.print("\n[bold underline]Risk Factors[/bold underline]")
         for reason in result.risk.reasons:
             color = _reason_color(reason)
@@ -244,9 +252,13 @@ def _print_permissions(console: Console, result: AnalysisResult) -> None:
             host_table.add_column("Domain Pattern", style="dim cyan")
             host_table.add_column("Type", width=10)
             for hp in remaining_hosts:
-                kind = "ws wildcard" if hp.startswith("ws") and "*" in hp else (
-                    "websocket" if hp.startswith("ws") else (
-                        "wildcard" if "*" in hp else "exact"
+                kind = (
+                    "ws wildcard"
+                    if hp.startswith("ws") and "*" in hp
+                    else (
+                        "websocket"
+                        if hp.startswith("ws")
+                        else ("wildcard" if "*" in hp else "exact")
                     )
                 )
                 host_table.add_row(hp, kind)

@@ -84,36 +84,44 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
                 # Edge has its own product API — never use CWS for Edge IDs.
                 store = fetch_edge_meta(ext_id)
             elif browser == "auto":
-                # No browser specified for a 32-char CRX ID — probe both stores
-                # to determine where the extension actually lives.
-                found_on = probe_stores(ext_id)
-                if "chrome" in found_on and "edge" in found_on:
-                    # Cross-listed: use CWS as primary (richer metadata)
+                # Check builtin list first — Chrome/Edge builtins are not on CWS
+                # and would waste a probe_stores round-trip returning nothing useful.
+                from .core.enrichment import _BUILTIN_EXTENSIONS
+
+                if ext_id in _BUILTIN_EXTENSIONS:
                     browser = "chrome"
-                    store = fetch_cws_meta(ext_id)
-                    # Annotate so the report shows both stores
-                    store = StoreMeta(
-                        name=store.name,
-                        description=store.description,
-                        category=store.category,
-                        developer=store.developer,
-                        version=store.version,
-                        install_count=store.install_count,
-                        available=store.available,
-                        source="chrome+edge",
-                        verified=store.verified,
-                        established=store.established,
-                    )
-                elif "edge" in found_on:
-                    browser = "edge"
-                    store = fetch_edge_meta(ext_id)
-                elif "chrome" in found_on:
-                    browser = "chrome"
-                    store = fetch_cws_meta(ext_id)
+                    store = _empty_store("builtin")
                 else:
-                    # Not found on either store — still run TI checks
-                    browser = "chrome"  # default for download attempt
-                    store = _empty_store("unknown")
+                    # No browser specified for a 32-char CRX ID — probe both stores
+                    # to determine where the extension actually lives.
+                    found_on = probe_stores(ext_id)
+                    if "chrome" in found_on and "edge" in found_on:
+                        # Cross-listed: use CWS as primary (richer metadata)
+                        browser = "chrome"
+                        store = fetch_cws_meta(ext_id)
+                        # Annotate so the report shows both stores
+                        store = StoreMeta(
+                            name=store.name,
+                            description=store.description,
+                            category=store.category,
+                            developer=store.developer,
+                            version=store.version,
+                            install_count=store.install_count,
+                            available=store.available,
+                            source="chrome+edge",
+                            verified=store.verified,
+                            established=store.established,
+                        )
+                    elif "edge" in found_on:
+                        browser = "edge"
+                        store = fetch_edge_meta(ext_id)
+                    elif "chrome" in found_on:
+                        browser = "chrome"
+                        store = fetch_cws_meta(ext_id)
+                    else:
+                        # Not found on either store — still run TI checks
+                        browser = "chrome"  # default for download attempt
+                        store = _empty_store("unknown")
             else:
                 store = fetch_cws_meta(ext_id)
         except Exception:

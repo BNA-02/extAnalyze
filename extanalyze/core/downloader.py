@@ -144,6 +144,23 @@ def _get_firefox_download_url(ext_id: str, timeout: int = 10) -> str:
 
     if resp.status_code == 404:
         raise ExtensionNotDownloadableError(f"Firefox addon '{ext_id}' not found on AMO")
+    if resp.status_code == 401:
+        # 401 from AMO means the addon exists but is disabled by developer or Mozilla
+        try:
+            body = resp.json()
+            if body.get("is_disabled_by_developer"):
+                raise ExtensionNotDownloadableError(
+                    f"Firefox addon '{ext_id}' was disabled by the developer (no longer available)"
+                )
+            if body.get("is_disabled_by_mozilla"):
+                raise ExtensionNotDownloadableError(
+                    f"Firefox addon '{ext_id}' was disabled by Mozilla"
+                )
+        except (ValueError, AttributeError):
+            pass
+        raise ExtensionNotDownloadableError(
+            f"Firefox addon '{ext_id}' is not publicly downloadable (AMO HTTP 401)"
+        )
     if resp.status_code != 200:
         raise ExtensionNotDownloadableError(f"AMO API HTTP {resp.status_code}")
 
