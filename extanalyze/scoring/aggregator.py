@@ -121,10 +121,16 @@ def aggregate(
 
     if liveness.store_likely_removed:
         score += 5
-        reasons.append(
-            "Google CRX API: status=noupdate — extension likely removed from CWS "
-            "(99.6% probability per TPCI research)"
-        )
+        source = liveness.status_xml or ""
+        if source == "edge-store":
+            reasons.append("Edge Add-ons: extension no longer available on Edge store")
+        elif source in ("builtin", ""):
+            pass  # builtin or unknown source — no meaningful removal signal
+        else:
+            reasons.append(
+                "Google CRX API: status=noupdate — extension likely removed from CWS "
+                "(99.6% probability per TPCI research)"
+            )
 
     # ── Permission Combos ────────────────────────────────────────────────
     for combo in perm_analysis.combo_hits:

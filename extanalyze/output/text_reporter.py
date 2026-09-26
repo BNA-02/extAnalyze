@@ -96,9 +96,17 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
 
     _add_ti_row(ti_table, "TPCI", result.tpci.hit, _tpci_detail(result.tpci))
     _add_ti_row(ti_table, "Sentry", result.sentry.hit, _sentry_detail(result.sentry))
+    # Label the liveness source correctly — not always Google CRX API
+    liveness_source = result.liveness.status_xml or ""
+    if liveness_source == "edge-store":
+        liveness_label = "Edge Add-ons API"
+    elif liveness_source == "builtin":
+        liveness_label = "Browser Builtin"
+    else:
+        liveness_label = "Google CRX API"
     _add_ti_row(
         ti_table,
-        "Google CRX API",
+        liveness_label,
         result.liveness.google_malware_confirmed,
         _liveness_detail(result.liveness),
     )
@@ -378,8 +386,15 @@ def _sentry_detail(sentry) -> str:
 
 
 def _liveness_detail(liveness) -> str:
+    source = liveness.status_xml or ""
     if liveness.google_malware_confirmed:
-        return "[bold red]_malware=true (authoritative)[/bold red]"
+        return "[bold red]MALWARE CONFIRMED by Google[/bold red]"
+    if source == "builtin":
+        return "Built-in browser extension"
+    if source == "edge-store":
+        if liveness.store_likely_removed:
+            return "[yellow]No longer available on Edge Add-ons store[/yellow]"
+        return "Active on Edge Add-ons store"
     if liveness.store_likely_removed:
-        return f"[yellow]Likely removed (status={liveness.status_xml})[/yellow]"
-    return f"status={liveness.status_xml}"
+        return f"[yellow]Likely removed from CWS (status={source})[/yellow]"
+    return f"status={source}"
