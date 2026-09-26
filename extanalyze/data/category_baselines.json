@@ -1,0 +1,107 @@
+{
+  "ad_blocker": {
+    "description": "Blocks ads and trackers",
+    "keywords": ["ad block", "adblock", "adblocker", "ublock", "uorigin", "block ads", "block tracker", "tracker block", "adguard", "ghostery", "privacy badger"],
+    "expected_permissions": ["webRequest", "webRequestBlocking", "declarativeNetRequest", "declarativeNetRequestWithHostAccess", "tabs", "storage", "<all_urls>", "webNavigation", "contextMenus", "notifications"],
+    "borderline_permissions": ["history", "cookies"],
+    "notes": "Ad blockers legitimately need broad network access. <all_urls> and webRequestBlocking are expected. History and cookies are borderline - some use them for blocking decisions."
+  },
+  "vpn_proxy": {
+    "description": "VPN or proxy service",
+    "keywords": ["vpn", "proxy", "tunnel", "ip address", "ip changer", "anonymizer", "hide ip", "mask ip", "private browsing"],
+    "expected_permissions": ["proxy", "storage", "tabs", "webRequest", "notifications", "alarms"],
+    "borderline_permissions": ["<all_urls>", "webNavigation"],
+    "notes": "Proxy permission is the core signal. webRequest for leak detection. <all_urls> for routing checks."
+  },
+  "password_manager": {
+    "description": "Password and credential manager",
+    "keywords": ["password", "passkey", "credential", "vault", "1password", "bitwarden", "lastpass", "dashlane", "keeper", "login manager", "autofill"],
+    "expected_permissions": ["activeTab", "storage", "clipboardWrite", "tabs", "contextMenus", "notifications"],
+    "borderline_permissions": ["scripting", "<all_urls>"],
+    "notes": "Autofill requires activeTab and scripting on specific pages. <all_urls> is borderline - some use it for form detection on any site."
+  },
+  "developer_tools": {
+    "description": "Development utilities and browser debugging",
+    "keywords": ["developer", "devtools", "debug", "json viewer", "rest client", "api tester", "web developer", "inspector", "postman", "graphql", "swagger"],
+    "expected_permissions": ["debugger", "tabs", "storage", "activeTab", "scripting", "webNavigation", "contextMenus", "downloads", "clipboardWrite", "clipboardRead"],
+    "borderline_permissions": ["<all_urls>", "webRequest", "nativeMessaging"],
+    "notes": "debugger is expected. nativeMessaging is borderline for IDE integrations."
+  },
+  "dark_mode": {
+    "description": "Dark mode and theme customization",
+    "keywords": ["dark mode", "dark theme", "night mode", "dark reader", "invert colors", "eye strain", "night shift"],
+    "expected_permissions": ["storage", "tabs", "activeTab"],
+    "borderline_permissions": ["scripting", "<all_urls>", "webNavigation"],
+    "notes": "scripting and <all_urls> needed to apply CSS to all pages. webNavigation for re-applying on navigation."
+  },
+  "screenshot": {
+    "description": "Screenshot and screen capture tool",
+    "keywords": ["screenshot", "screen capture", "screen grab", "snipping", "capture page", "full page screenshot"],
+    "expected_permissions": ["tabs", "activeTab", "downloads", "storage", "contextMenus"],
+    "borderline_permissions": ["scripting", "<all_urls>"],
+    "notes": "Core: activeTab for capture. downloads for saving. scripting to add UI overlay."
+  },
+  "tab_manager": {
+    "description": "Tab organization and management",
+    "keywords": ["tab manager", "tab organizer", "tab group", "session manager", "workspaces", "tab saver", "OneTab", "tab suspend"],
+    "expected_permissions": ["tabs", "storage", "bookmarks", "sessions", "contextMenus", "alarms"],
+    "borderline_permissions": ["history", "windows"],
+    "notes": "tabs is essential. bookmarks for session saving. history is borderline."
+  },
+  "shopping_coupon": {
+    "description": "Shopping assistant and coupon finder",
+    "keywords": ["coupon", "cashback", "discount", "deal", "price compare", "honey", "rakuten", "shopping", "promo code", "savings"],
+    "expected_permissions": ["tabs", "webNavigation", "storage", "notifications", "contextMenus"],
+    "borderline_permissions": ["scripting", "<all_urls>", "webRequest"],
+    "notes": "webNavigation to detect shopping sites. scripting/<all_urls> to inject coupon UI. history is UNEXPECTED."
+  },
+  "translator": {
+    "description": "Text translation",
+    "keywords": ["translate", "translator", "translation", "google translate", "language", "multilingual"],
+    "expected_permissions": ["tabs", "activeTab", "storage", "contextMenus"],
+    "borderline_permissions": ["scripting", "<all_urls>"],
+    "notes": "contextMenus for right-click translate. scripting for inline translation. <all_urls> only if translating entire pages."
+  },
+  "email_client": {
+    "description": "Email and productivity integration",
+    "keywords": ["email", "gmail", "outlook", "mail", "inbox", "newsletter", "unsubscribe"],
+    "expected_permissions": ["tabs", "storage", "notifications", "identity", "activeTab"],
+    "borderline_permissions": ["scripting", "<all_urls>"],
+    "notes": "identity for OAuth to email providers. <all_urls> is UNEXPECTED for email clients."
+  },
+  "crypto_wallet": {
+    "description": "Cryptocurrency wallet",
+    "keywords": ["crypto", "wallet", "metamask", "ethereum", "bitcoin", "web3", "blockchain", "defi", "nft"],
+    "expected_permissions": ["storage", "activeTab", "notifications", "tabs"],
+    "borderline_permissions": ["scripting", "<all_urls>", "clipboardRead", "clipboardWrite"],
+    "notes": "Crypto wallets inject Web3 providers into pages - scripting/<all_urls> can be legitimate. clipboardRead is HIGH risk even for crypto."
+  },
+  "productivity": {
+    "description": "General productivity and notes",
+    "keywords": ["productivity", "notes", "todo", "task", "checklist", "reminder", "pomodoro", "focus", "timer"],
+    "expected_permissions": ["storage", "tabs", "contextMenus", "activeTab", "alarms", "notifications"],
+    "borderline_permissions": ["scripting"],
+    "notes": "Minimal permissions expected. scripting is borderline for page injection features."
+  },
+  "new_tab_page": {
+    "description": "Custom new tab page",
+    "keywords": ["new tab", "newtab", "start page", "home page", "speed dial", "dashboard"],
+    "expected_permissions": ["storage", "tabs", "bookmarks"],
+    "borderline_permissions": ["history", "topSites"],
+    "notes": "history/topSites for showing recently visited. No network access expected."
+  },
+  "spell_checker": {
+    "description": "Grammar and spell checking",
+    "keywords": ["spell", "grammar", "grammarly", "writing", "spellcheck", "proofreading", "language check"],
+    "expected_permissions": ["activeTab", "storage", "contextMenus"],
+    "borderline_permissions": ["scripting", "<all_urls>"],
+    "notes": "scripting/<all_urls> for inline suggestions on any page is legitimate for grammarly-type tools."
+  },
+  "security": {
+    "description": "Security and privacy protection",
+    "keywords": ["security", "antivirus", "malware", "phishing", "safe browsing", "privacy", "protect", "firewall"],
+    "expected_permissions": ["webRequest", "tabs", "storage", "webNavigation", "notifications", "<all_urls>"],
+    "borderline_permissions": ["declarativeNetRequest", "declarativeNetRequestWithHostAccess", "nativeMessaging"],
+    "notes": "Security tools can legitimately need broad permissions. nativeMessaging for AV integration is borderline."
+  }
+}

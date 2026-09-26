@@ -1,0 +1,115 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "extanalyze"
+version = "0.1.0"
+description = "Browser extension static analysis and threat intelligence CLI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "extanalyze contributors" }]
+keywords = ["browser", "extension", "security", "threat-intel", "chrome", "firefox"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "click>=8.1",
+    "requests>=2.31",
+    "rich>=13.0",
+    "msgpack>=1.0",
+    "lxml>=5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.12",
+    "pytest-cov>=5.0",
+    "responses>=0.25",
+    "ruff>=0.4.10",
+    "bandit[toml]>=1.8.3",
+    "pip-audit>=2.7.3",
+    "build>=1.2",
+    "twine>=5.0",
+]
+
+[project.scripts]
+extanalyze = "extanalyze.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["extanalyze*"]
+
+[tool.setuptools.package-data]
+extanalyze = ["data/*.json"]
+
+# ── Ruff: linting + formatting ───────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (unused imports, undefined names)
+    "I",   # isort
+    "B",   # flake8-bugbear (common bug patterns)
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade (modern Python syntax)
+    "S",   # flake8-bandit subset (basic security)
+]
+ignore = [
+    "E501",  # line too long — handled by formatter
+    "S101",  # assert — acceptable for invariants
+    "S603",  # subprocess without shell — intentional
+    "S607",  # partial executable path — intentional
+    "B008",  # function call in arg defaults — click pattern
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ── Bandit: SAST ─────────────────────────────────────────────────────────────
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv", "dist"]
+skips = ["B101", "B311"]
+
+# ── pytest ───────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q"
+markers = [
+    "unit: pure unit tests, no network or disk I/O",
+    "integration: tests that use real network or filesystem",
+    "slow: tests taking more than 5s",
+]
+
+# ── Coverage ─────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["extanalyze"]
+omit = ["tests/*", "venv/*", ".venv/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

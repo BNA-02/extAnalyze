@@ -1,0 +1,167 @@
+[
+  {
+    "id": "COMBO_001",
+    "name": "Full Browsing Exfiltration Pipeline",
+    "permissions": ["tabs", "webRequest", "<all_urls>"],
+    "match_mode": "all",
+    "severity": "CRITICAL",
+    "threat": "Can intercept and exfiltrate all browser activity including URLs, request metadata, and timing",
+    "mv2_note": "webRequest allows full blocking/modification in MV2 - complete MITM capability",
+    "mv3_note": "webRequest is read-only in MV3 but URL/metadata exfil via fetch() to attacker domain remains viable"
+  },
+  {
+    "id": "COMBO_002",
+    "name": "Cookie Theft Pipeline",
+    "permissions": ["cookies", "<all_urls>"],
+    "match_mode": "all",
+    "severity": "CRITICAL",
+    "threat": "Can steal session cookies for any website, enabling account takeover without credentials",
+    "mv2_note": "Direct session hijacking vector",
+    "mv3_note": "Identical risk - cookies API unchanged in MV3"
+  },
+  {
+    "id": "COMBO_003",
+    "name": "C2 Host Communication + Persistence",
+    "permissions": ["nativeMessaging", "storage"],
+    "match_mode": "all",
+    "severity": "CRITICAL",
+    "threat": "Communicates with local host application (sandbox escape) and persists C2 configuration locally",
+    "mv2_note": "Classic C2 implant pattern",
+    "mv3_note": "Identical risk in MV3 - native messaging unchanged"
+  },
+  {
+    "id": "COMBO_004",
+    "name": "Full Browser Identity Fingerprint",
+    "permissions": ["bookmarks", "history", "<all_urls>"],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "Collects complete browsing identity: all visited sites, saved bookmarks, and can inject on any site",
+    "mv2_note": "Comprehensive user profiling",
+    "mv3_note": "Identical risk"
+  },
+  {
+    "id": "COMBO_005",
+    "name": "Clipboard + Session Exfil",
+    "permissions": ["clipboardRead", "tabs"],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "Reads clipboard contents (2FA codes, crypto addresses, passwords) combined with full tab URL awareness",
+    "mv2_note": "Can correlate clipboard content with active financial/auth sites",
+    "mv3_note": "Identical risk"
+  },
+  {
+    "id": "COMBO_006",
+    "name": "Universal Code Injection",
+    "permissions": ["scripting", "<all_urls>"],
+    "match_mode": "all",
+    "severity": "CRITICAL",
+    "threat": "Injects arbitrary JavaScript into any website - enables keyloggers, form stealers, UI overlays on all sites",
+    "mv2_note": "MV2 uses tabs.executeScript instead of scripting API",
+    "mv3_note": "MV3 scripting + host_permissions - combined effect is identical"
+  },
+  {
+    "id": "COMBO_007",
+    "name": "MV2 Full Traffic MITM",
+    "permissions": ["webRequestBlocking", "<all_urls>"],
+    "match_mode": "all",
+    "mv2_only": true,
+    "severity": "CRITICAL",
+    "threat": "Complete man-in-the-middle: block, modify, or inject into any HTTP/S response in real-time",
+    "mv2_note": "Highest privilege network manipulation possible in MV2 - can strip CSP headers, inject scripts into any page",
+    "mv3_note": "This exact combo CANNOT exist in MV3 - webRequestBlocking is removed"
+  },
+  {
+    "id": "COMBO_008",
+    "name": "Debugger Full Tab Control",
+    "permissions": ["debugger"],
+    "match_mode": "any",
+    "severity": "CRITICAL",
+    "threat": "Chrome DevTools Protocol gives full control of any tab: network interception, JS execution, screenshot, DOM read",
+    "mv2_note": "Extremely high privilege - rarely legitimate outside developer tools",
+    "mv3_note": "Identical in MV3"
+  },
+  {
+    "id": "COMBO_009",
+    "name": "OAuth Token Theft + Storage",
+    "permissions": ["identity", "storage"],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "Access OAuth tokens for Google/third-party services and persist them for later exfiltration",
+    "mv2_note": "Token theft enabling cloud account access",
+    "mv3_note": "Identical risk"
+  },
+  {
+    "id": "COMBO_010",
+    "name": "MV3 Hidden Execution Context",
+    "permissions": ["offscreen"],
+    "match_mode": "any",
+    "mv3_only": true,
+    "severity": "MEDIUM",
+    "threat": "MV3-specific: offscreen document runs hidden from user, bypasses service worker execution limits",
+    "mv2_note": "N/A - MV3 only",
+    "mv3_note": "Can perform DOM operations, parse data, or communicate with C2 outside normal extension lifecycle"
+  },
+  {
+    "id": "COMBO_011",
+    "name": "Dynamic Redirect Rules via Storage",
+    "permissions": ["declarativeNetRequestWithHostAccess", "storage"],
+    "match_mode": "all",
+    "mv3_only": true,
+    "severity": "HIGH",
+    "threat": "Redirect rules stored in extension storage can be silently updated to redirect users to attacker-controlled domains",
+    "mv2_note": "N/A - MV3 only combo",
+    "mv3_note": "Silent rule updates = attacker can change redirect targets post-install without triggering extension update review"
+  },
+  {
+    "id": "COMBO_012",
+    "name": "Non-CWS Update Channel",
+    "permissions": [],
+    "manifest_signals": ["update_url_non_google"],
+    "match_mode": "signals",
+    "severity": "HIGH",
+    "threat": "Extension receives updates from attacker-controlled server, enabling silent payload delivery post-install",
+    "mv2_note": "Classic supply chain / sideloading attack vector",
+    "mv3_note": "Same risk in MV3"
+  },
+  {
+    "id": "COMBO_013",
+    "name": "Extension Management Control",
+    "permissions": ["management"],
+    "match_mode": "any",
+    "severity": "HIGH",
+    "threat": "Can enumerate, disable, or uninstall other extensions — used to disable security tools (ad blockers, password managers, AV extensions) and perform reconnaissance of the installed extension ecosystem",
+    "mv2_note": "management permission grants full extension lifecycle control",
+    "mv3_note": "Identical in MV3 — management API is unchanged"
+  },
+  {
+    "id": "COMBO_013B",
+    "name": "Extension Management + Storage (Persistent Recon)",
+    "permissions": ["management", "storage"],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "Enumerates installed extensions and persists the list — enables targeted disabling of security tools, builds extension fingerprint for attacker C2",
+    "mv2_note": "Extension enumeration + persistent storage = full reconnaissance loop",
+    "mv3_note": "Identical in MV3"
+  },
+  {
+    "id": "COMBO_014",
+    "name": "Proxy + Storage C2 Config",
+    "permissions": ["proxy", "storage"],
+    "match_mode": "all",
+    "severity": "CRITICAL",
+    "threat": "Routes all browser traffic through configurable proxy; C2 can update proxy target via storage sync",
+    "mv2_note": "Persistent traffic interception - proxy target updateable via chrome.storage.sync across all user's devices",
+    "mv3_note": "Identical risk"
+  },
+  {
+    "id": "COMBO_015",
+    "name": "Content Script Universal Injection",
+    "permissions": [],
+    "manifest_signals": ["content_scripts_all_urls"],
+    "match_mode": "signals",
+    "severity": "HIGH",
+    "threat": "Content scripts declared in manifest that run on all URLs - passive injection without scripting API at runtime",
+    "mv2_note": "Declared content scripts run automatically on every page match",
+    "mv3_note": "Same in MV3 - content_scripts in manifest still auto-inject"
+  }
+]
