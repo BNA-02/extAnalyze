@@ -124,8 +124,10 @@ def aggregate(
         source = liveness.status_xml or ""
         if source == "edge-store":
             reasons.append("Edge Add-ons: extension no longer available on Edge store")
+        elif source == "firefox-amo":
+            reasons.append("Firefox AMO: extension no longer available (disabled or removed)")
         elif source in ("builtin", ""):
-            pass  # builtin or unknown source — no meaningful removal signal
+            pass  # builtin or unknown — no meaningful removal signal
         else:
             reasons.append(
                 "Google CRX API: status=noupdate — extension likely removed from CWS "

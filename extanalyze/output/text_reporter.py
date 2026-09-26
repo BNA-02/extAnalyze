@@ -100,6 +100,8 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
     liveness_source = result.liveness.status_xml or ""
     if liveness_source == "edge-store":
         liveness_label = "Edge Add-ons API"
+    elif liveness_source == "firefox-amo":
+        liveness_label = "Firefox AMO"
     elif liveness_source == "builtin":
         liveness_label = "Browser Builtin"
     else:
@@ -395,6 +397,10 @@ def _liveness_detail(liveness) -> str:
         if liveness.store_likely_removed:
             return "[yellow]No longer available on Edge Add-ons store[/yellow]"
         return "Active on Edge Add-ons store"
+    if source == "firefox-amo":
+        if liveness.store_likely_removed:
+            return "[yellow]No longer available on Firefox AMO[/yellow]"
+        return "Active on Firefox AMO"
     if liveness.store_likely_removed:
         return f"[yellow]Likely removed from CWS (status={source})[/yellow]"
     return f"status={source}"

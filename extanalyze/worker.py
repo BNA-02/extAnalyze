@@ -151,8 +151,8 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
             )
 
     # ── Step 2: Google CRX liveness (rate limited) ────────────────────────
-    # Skip for Edge-only IDs (returns error-unknownApplication from Google)
-    # and builtins (not in CWS, no useful signal).
+    # Skip for: Edge-only IDs (returns error-unknownApplication from Google),
+    # Firefox (not on CWS at all), and builtins (not in CWS).
     is_builtin = store.source == "builtin"
     with _google_semaphore:
         try:
@@ -161,6 +161,13 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
                     google_malware_confirmed=False,
                     store_likely_removed=not store.available,
                     status_xml="edge-store",
+                    raw_response="",
+                )
+            elif browser == "firefox":
+                liveness = LivenessResult(
+                    google_malware_confirmed=False,
+                    store_likely_removed=not store.available,
+                    status_xml="firefox-amo",
                     raw_response="",
                 )
             elif is_builtin:
