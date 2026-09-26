@@ -12,11 +12,14 @@ from extanalyze.core.ingestion import (
 
 
 class TestDetectBrowser:
-    def test_chrome_id_detected(self):
-        # 32 chars, a-p only
-        assert detect_browser("cjpalhdlnbpafiamejdnhcphjbkeiagm") == "chrome"
+    def test_chrome_id_returns_auto_without_hint(self):
+        # 32-char a-p ID without hint → "auto" (probe both stores)
+        assert detect_browser("cjpalhdlnbpafiamejdnhcphjbkeiagm") == "auto"
 
-    def test_hint_overrides_detection(self):
+    def test_chrome_hint_overrides_auto(self):
+        assert detect_browser("cjpalhdlnbpafiamejdnhcphjbkeiagm", hint="chrome") == "chrome"
+
+    def test_edge_hint_overrides_auto(self):
         assert detect_browser("cjpalhdlnbpafiamejdnhcphjbkeiagm", hint="edge") == "edge"
 
     def test_firefox_uuid_detected(self):
@@ -46,6 +49,11 @@ class TestIterSingle:
         inputs = iter_single("cjpalhdlnbpafiamejdnhcphjbkeiagm")
         assert len(inputs) == 1
         assert inputs[0].ext_id == "cjpalhdlnbpafiamejdnhcphjbkeiagm"
+        # Without --browser hint, CRX IDs return "auto"
+        assert inputs[0].browser == "auto"
+
+    def test_hint_overrides_auto(self):
+        inputs = iter_single("cjpalhdlnbpafiamejdnhcphjbkeiagm", browser_hint="chrome")
         assert inputs[0].browser == "chrome"
 
 

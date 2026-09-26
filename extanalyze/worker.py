@@ -27,6 +27,7 @@ from .core.store_meta import (
     fetch_amo_meta,
     fetch_cws_meta,
     fetch_edge_meta,
+    probe_stores,
 )
 from .intel import sentry as sentry_mod
 from .intel import tpci as tpci_mod
@@ -38,6 +39,21 @@ from .scoring.result import AnalysisResult
 # Rate limiter for live Google API calls (avoid hammering)
 _google_semaphore = threading.Semaphore(2)
 _store_semaphore = threading.Semaphore(3)
+
+
+def _empty_store(source: str) -> StoreMeta:
+    return StoreMeta(
+        name="",
+        description="",
+        category="",
+        developer="",
+        version="",
+        install_count="",
+        available=False,
+        source=source,
+        verified=False,
+        established=False,
+    )
 
 
 def preload_intel() -> None:
@@ -66,8 +82,38 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
                 store = fetch_amo_meta(ext_id)
             elif browser == "edge":
                 # Edge has its own product API — never use CWS for Edge IDs.
-                # CWS returns "Chrome Web Store" homepage for unknown IDs.
                 store = fetch_edge_meta(ext_id)
+            elif browser == "auto":
+                # No browser specified for a 32-char CRX ID — probe both stores
+                # to determine where the extension actually lives.
+                found_on = probe_stores(ext_id)
+                if "chrome" in found_on and "edge" in found_on:
+                    # Cross-listed: use CWS as primary (richer metadata)
+                    browser = "chrome"
+                    store = fetch_cws_meta(ext_id)
+                    # Annotate so the report shows both stores
+                    store = StoreMeta(
+                        name=store.name,
+                        description=store.description,
+                        category=store.category,
+                        developer=store.developer,
+                        version=store.version,
+                        install_count=store.install_count,
+                        available=store.available,
+                        source="chrome+edge",
+                        verified=store.verified,
+                        established=store.established,
+                    )
+                elif "edge" in found_on:
+                    browser = "edge"
+                    store = fetch_edge_meta(ext_id)
+                elif "chrome" in found_on:
+                    browser = "chrome"
+                    store = fetch_cws_meta(ext_id)
+                else:
+                    # Not found on either store — still run TI checks
+                    browser = "chrome"  # default for download attempt
+                    store = _empty_store("unknown")
             else:
                 store = fetch_cws_meta(ext_id)
         except Exception:

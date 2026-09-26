@@ -32,20 +32,24 @@ def detect_browser(ext_id: str, hint: str | None = None) -> str:
 
     Chrome/Edge IDs: 32 lowercase chars, only a-p (base26 encoding of CRX ID bytes)
     Firefox IDs: UUID format OR short slug from AMO
+
+    Returns one of: "chrome", "edge", "firefox", "auto"
+    "auto" means the caller should probe both Chrome and Edge stores to determine
+    which store(s) list the extension.
     """
     if hint in ("chrome", "edge", "firefox"):
         return hint
 
     if _CHROME_ID_RE.match(ext_id):
-        # Chrome and Edge share the same CWS format - default to chrome
-        # User can override with --browser edge to hit Edge Add-ons store instead
-        return "chrome"
+        # 32-char a-p ID could be Chrome, Edge, or both.
+        # Return "auto" so the worker can probe both stores.
+        return "auto"
 
     # Firefox UUID format: {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}
     if re.match(r"^\{[0-9a-f-]{36}\}$", ext_id, re.IGNORECASE):
         return "firefox"
 
-    # Firefox slug (e.g. ublock-origin)
+    # Firefox slug (e.g. ublock-origin, adguardadblocker@adguard.com)
     if re.match(r"^[a-z0-9][a-z0-9\-_@\.]+$", ext_id) and len(ext_id) < 80:
         return "firefox"
 

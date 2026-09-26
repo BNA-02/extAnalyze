@@ -40,7 +40,11 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
 
     meta_table.add_row("Extension ID", result.ext_id)
     meta_table.add_row("Name", name or "[dim]UNKNOWN[/dim]")
-    meta_table.add_row("Browser", result.browser.capitalize())
+    # Show which store(s) the extension was found on
+    browser_display = result.browser.capitalize()
+    if result.store.source == "chrome+edge":
+        browser_display = "Chrome [dim]+ Edge[/dim]"
+    meta_table.add_row("Browser / Store", browser_display)
     meta_table.add_row("Manifest", f"MV{mv}")
     meta_table.add_row("Version", result.manifest.version if result.manifest else "?")
     meta_table.add_row("Developer", result.store.developer or "[dim]unknown[/dim]")

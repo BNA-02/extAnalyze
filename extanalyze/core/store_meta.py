@@ -62,6 +62,53 @@ class LivenessResult:
     raw_response: str  # first 500 chars of response for debugging
 
 
+def probe_stores(ext_id: str, timeout: int = 8) -> list[str]:
+    """
+    Probe Chrome and Edge stores to determine where a 32-char CRX ID is listed.
+
+    Uses the Google CRX update API (fast, definitive for Chrome) and the Edge
+    product API (equally fast) in parallel via a simple sequential check — both
+    are sub-second responses.
+
+    Returns a list of browser strings: ["chrome"], ["edge"], ["chrome", "edge"],
+    or [] if found nowhere (unknown/removed extension).
+
+    Decision matrix:
+      CRX status ok/noupdate + Edge 200  → ["chrome", "edge"]
+      CRX status ok/noupdate + Edge 404  → ["chrome"]
+      CRX error-unknownApplication + Edge 200 → ["edge"]
+      CRX error-unknownApplication + Edge 404 → []
+    """
+    browsers: list[str] = []
+
+    # Check Chrome (Google CRX API — fastest, most reliable)
+    crx_url = _CRX_LIVENESS_URL.format(ext_id=ext_id)
+    try:
+        resp = requests.get(crx_url, headers=_HEADERS, timeout=timeout)
+        xml = resp.text
+        status_m = re.search(r'status="([^"]+)"', xml)
+        crx_status = status_m.group(1) if status_m else "unknown"
+        on_chrome = crx_status in ("ok", "noupdate")
+    except requests.RequestException:
+        on_chrome = False
+
+    if on_chrome:
+        browsers.append("chrome")
+
+    # Check Edge (product API)
+    edge_url = _EDGE_PRODUCT_API_URL.format(ext_id=ext_id)
+    try:
+        resp = requests.get(edge_url, headers=_HEADERS, timeout=timeout)
+        on_edge = resp.status_code == 200 and bool(resp.json().get("name"))
+    except Exception:
+        on_edge = False
+
+    if on_edge:
+        browsers.append("edge")
+
+    return browsers
+
+
 def fetch_edge_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
     """
     Fetch Edge Add-ons metadata via the public product API.
@@ -168,6 +215,21 @@ def fetch_cws_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
             version="",
             install_count="",
             available=True,
+            source="cws",
+            verified=False,
+            established=False,
+        )
+
+    # Detect "not found" redirect — CWS redirects unknown IDs to /empty-title/
+    if "empty-title" in resp.url or "/empty" in resp.url.split("?")[0]:
+        return StoreMeta(
+            name="",
+            description="",
+            category="",
+            developer="",
+            version="",
+            install_count="",
+            available=False,
             source="cws",
             verified=False,
             established=False,
