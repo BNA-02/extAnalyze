@@ -310,5 +310,57 @@
     "threat": "Unlimited local storage + universal site access = can accumulate unlimited stolen data (cookies, credentials, page content) locally before bulk exfiltration, evading bandwidth-based detection",
     "mv2_note": "Large local buffer enables slow-exfil pattern that evades DLP",
     "mv3_note": "Same in MV3"
+  },
+  {
+    "id": "COMBO_024",
+    "name": "Response Body MITM (filterResponseData)",
+    "permissions": [
+      "webRequestFilterResponse",
+      "webRequest",
+      "<all_urls>"
+    ],
+    "match_mode": "all",
+    "severity": "CRITICAL",
+    "threat": "Full body-level MITM on all HTTP/S traffic: reads and modifies response bytes before pages receive them. Stronger than plain webRequest (headers only) \u2014 can extract credentials from login responses, inject JS into streamed HTML, modify financial transaction data, and strip Content-Security-Policy from bodies.",
+    "mv2_note": "webRequestBlocking + filterResponseData = complete MITM stack in MV2",
+    "mv3_note": "webRequest is read-only in MV3 but filterResponseData can still read response bodies for silent exfiltration"
+  },
+  {
+    "id": "COMBO_025",
+    "name": "Service Worker Script Injection",
+    "permissions": [
+      "webRequestFilterResponse.serviceWorkerScript",
+      "<all_urls>"
+    ],
+    "match_mode": "all",
+    "severity": "CRITICAL",
+    "threat": "Intercepts and modifies any website's service worker JavaScript before the browser installs it. The backdoored service worker then runs with the target site's origin \u2014 persistent code execution at site trust level, surviving extension removal. Can intercept all network requests site-wide, exfiltrate site data, and persist across browser restarts.",
+    "mv2_note": "Privilege escalation to target-site-origin execution \u2014 bypasses extension sandbox entirely",
+    "mv3_note": "Identical in MV3 and particularly dangerous since service workers are the primary MV3 execution model"
+  },
+  {
+    "id": "COMBO_026",
+    "name": "DNS-Based Network Recon + Fingerprinting",
+    "permissions": [
+      "dns"
+    ],
+    "match_mode": "any",
+    "severity": "MEDIUM",
+    "threat": "Silent hostname-to-IP resolution without visible network traffic \u2014 can enumerate corporate internal hostnames to map network topology, detect VPN/corporate network presence, fingerprint the user's DNS resolver for cross-session tracking, and evade bandwidth-based DLP monitoring.",
+    "mv2_note": "DNS queries bypass web traffic DLP and are invisible to the user",
+    "mv3_note": "Same in MV3 \u2014 particularly used for sandbox evasion (resolve internal.corp to detect real vs sandbox)"
+  },
+  {
+    "id": "COMBO_027",
+    "name": "DNS Recon + Data Exfiltration via DNS Tunnel",
+    "permissions": [
+      "dns",
+      "storage"
+    ],
+    "match_mode": "all",
+    "severity": "HIGH",
+    "threat": "DNS resolution combined with storage enables DNS tunneling: encode stolen data as hostnames (base32(stolen_data).attacker.com), resolve them silently, and the attacker's DNS server receives the data. DNS exfiltration bypasses HTTP-level DLP, firewalls, and proxy inspection.",
+    "mv2_note": "Classic C2 and exfil channel that evades network monitoring",
+    "mv3_note": "Same in MV3 \u2014 DNS tunneling works regardless of manifest version"
   }
 ]

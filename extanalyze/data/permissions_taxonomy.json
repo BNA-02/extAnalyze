@@ -713,5 +713,44 @@
     "c2_vector": false,
     "privilege_escalation": false,
     "sensitivity": "LOW"
+  },
+  "dns": {
+    "category": "network",
+    "risk_score": 5,
+    "description": "Resolve arbitrary hostnames to IP addresses via chrome.dns.resolve()",
+    "mv2_abuse": "Silent hostname resolution without a visible network request \u2014 enumerate internal corporate hostnames to map network topology, detect if the user is on a VPN or corporate network, or fingerprint the user's DNS resolver for tracking. DNS queries bypass many web-traffic-based DLP solutions.",
+    "mv3_abuse": "Same in MV3 \u2014 dns API is unchanged. Especially useful to sandbox-evade: resolve a known internal hostname (e.g. corp.internal) to detect analysis environments vs real corporate laptops.",
+    "mv2_only": false,
+    "mv3_blocked": false,
+    "data_exfil_vector": true,
+    "c2_vector": false,
+    "privilege_escalation": false,
+    "sensitivity": "MEDIUM"
+  },
+  "webRequestFilterResponse": {
+    "category": "network",
+    "risk_score": 9,
+    "description": "Access the raw response body bytes of HTTP/S requests as a streaming filter via chrome.webRequest.filterResponseData(). Requires the webRequest permission plus a host_permissions match.",
+    "mv2_abuse": "Full response-body MITM: read or modify the byte stream of any matching HTTP/S response before the page receives it. webRequest alone only gives headers \u2014 filterResponseData gives the body. Can extract credentials from login responses, inject JS into page HTML as it streams, silently modify banking transaction amounts, or strip Content-Security-Policy headers from page bodies (not just response headers). Combined with webRequest + <all_urls>: universal body-level interception.",
+    "mv3_abuse": "Same in MV3 \u2014 filterResponseData is available but the webRequest permission is now read-only in MV3 for the blocking capability. However, filterResponseData still allows reading response body content even in non-blocking mode, enabling silent exfiltration of page content and API responses.",
+    "mv2_only": false,
+    "mv3_blocked": false,
+    "data_exfil_vector": true,
+    "c2_vector": false,
+    "privilege_escalation": true,
+    "sensitivity": "CRITICAL"
+  },
+  "webRequestFilterResponse.serviceWorkerScript": {
+    "category": "network",
+    "risk_score": 10,
+    "description": "Extends filterResponseData() to intercept and modify service worker JavaScript files before the browser installs them. The injected service worker runs with the TARGET SITE's origin, not the extension's origin.",
+    "mv2_abuse": "Inject arbitrary malicious JavaScript into a website's service worker before the browser installs it. The compromised service worker then runs with full trust of the target site's origin \u2014 can intercept all network requests made by that site, read and exfiltrate site data, modify responses site-wide, and persist across browser restarts without any extension involvement. This is a privilege escalation to target-site-origin code execution, bypassing the extension sandbox entirely.",
+    "mv3_abuse": "Same in MV3 and arguably more dangerous: service workers are the primary execution model for MV3 extensions, so attackers are familiar with the pattern. A site's service worker injected with malicious code survives extension removal until the browser re-fetches the clean service worker script. Combined with <all_urls>: can backdoor the service worker of any website the user visits.",
+    "mv2_only": false,
+    "mv3_blocked": false,
+    "data_exfil_vector": true,
+    "c2_vector": true,
+    "privilege_escalation": true,
+    "sensitivity": "CRITICAL"
   }
 }
