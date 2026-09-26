@@ -106,12 +106,14 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
         liveness_label = "Browser Builtin"
     else:
         liveness_label = "Google CRX API"
-    _add_ti_row(
-        ti_table,
-        liveness_label,
-        result.liveness.google_malware_confirmed,
-        _liveness_detail(result.liveness),
-    )
+    # Liveness has three states: malware confirmed (HIT), removed (WARN), active (Clean)
+    if result.liveness.google_malware_confirmed:
+        liveness_status = "[bold red]HIT[/bold red]"
+    elif result.liveness.store_likely_removed:
+        liveness_status = "[yellow]Removed[/yellow]"
+    else:
+        liveness_status = "[green]Clean[/green]"
+    ti_table.add_row(liveness_label, liveness_status, _liveness_detail(result.liveness))
 
     console.print(ti_table)
 
