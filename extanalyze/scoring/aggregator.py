@@ -59,6 +59,7 @@ def aggregate(
     sentry: SentryResult,
     liveness: LivenessResult,
     perm_analysis: PermissionAnalysis,
+    deep_result=None,  # DeepAnalysisResult | None — avoid circular import
 ) -> RiskReport:
     score = 0
     reasons: list[str] = []
@@ -171,6 +172,29 @@ def aggregate(
     if ti_confirmed and score < 41:
         score = 41
         reasons.insert(0, "[!] TI confirmed malicious — minimum score raised to HIGH")
+
+    # ── Deep static analysis contribution ────────────────────────────────
+    if deep_result is not None:
+        deep_score = deep_result.total_score
+        if deep_score > 0:
+            score += deep_score
+            # Surface the most severe findings as risk reasons (top 5)
+            severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+            top_findings = sorted(
+                deep_result.findings,
+                key=lambda f: severity_order.get(f.severity, 4),
+            )[:5]
+            for f in top_findings:
+                reasons.append(
+                    f"[DEEP:{f.rule_id}] {f.title} ({f.severity}): {f.description[:120]}"
+                )
+            # Vulnerable libraries
+            if deep_result.retire_js:
+                reasons.append(
+                    f"{len(deep_result.retire_js)} vulnerable JS "
+                    f"{'library' if len(deep_result.retire_js) == 1 else 'libraries'} "
+                    "detected (RetireJS)"
+                )
 
     # ── Determine level ──────────────────────────────────────────────────
     level = "SAFE"

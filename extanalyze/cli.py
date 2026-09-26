@@ -81,7 +81,17 @@ def main():
     default=False,
     help="Force rebuild of the msgpack catalog index from --catalog CSV.",
 )
-def analyze(ext_id, input_file, browser, output, out_dir, workers, catalog, rebuild_catalog):
+@click.option(
+    "--deep",
+    is_flag=True,
+    default=False,
+    help=(
+        "Enable deep static analysis: JS/HTML pattern scanning, entropy analysis, "
+        "RetireJS vulnerable library detection, URL/IP/email extraction. "
+        "Significantly slower. Set VIRUSTOTAL_API_KEY for optional domain reputation checks."
+    ),
+)
+def analyze(ext_id, input_file, browser, output, out_dir, workers, catalog, rebuild_catalog, deep):
     """
     Analyze one extension ID or a batch from a file.
 
@@ -126,10 +136,10 @@ def analyze(ext_id, input_file, browser, output, out_dir, workers, catalog, rebu
 
     # ── Run analysis ──────────────────────────────────────────────────────
     if len(inputs) == 1:
-        result = analyze_single(inputs[0])
+        result = analyze_single(inputs[0], deep=deep)
         results = [result]
     else:
-        results = analyze_bulk(inputs, max_workers=workers, console=err_console)
+        results = analyze_bulk(inputs, max_workers=workers, console=err_console, deep=deep)
         # Sort by risk score descending for output
         results.sort(key=lambda r: -r.risk.score)
 

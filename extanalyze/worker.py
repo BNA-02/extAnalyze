@@ -14,6 +14,7 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
 from .analysis.categorizer import categorize
+from .analysis.deep import run_deep_analysis
 from .analysis.permissions import analyze as analyze_permissions
 from .core.downloader import ExtensionNotDownloadableError, download
 from .core.enrichment import enrich
@@ -67,7 +68,7 @@ def preload_intel() -> None:
     print("[worker] TI caches ready.", file=sys.stderr)
 
 
-def analyze_single(inp: ExtensionInput) -> AnalysisResult:
+def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
     """
     Full pipeline for one extension. Designed to run inside a thread.
     Never raises: errors are captured in AnalysisResult fields.
@@ -199,6 +200,7 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
     manifest_error = ""
     manifest = None
     perm_analysis = None
+    deep_result = None
     download_sha256 = ""
     download_size = 0
     crx_format = ""
@@ -240,6 +242,12 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
 
                     perm_analysis = analyze_permissions(manifest, category, confidence)
 
+                    # ── Step 9: Deep static analysis (optional) ───────────────
+                    if deep:
+                        deep_result = run_deep_analysis(extract_result, manifest)
+                    else:
+                        deep_result = None
+
                 except Exception as e:
                     manifest_error = str(e)
 
@@ -270,7 +278,7 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
             category_confidence="UNKNOWN",
         )
 
-    risk = aggregate(tpci_result, sentry_result, liveness, perm_analysis)
+    risk = aggregate(tpci_result, sentry_result, liveness, perm_analysis, deep_result=deep_result)
 
     return AnalysisResult(
         ext_id=ext_id,
@@ -285,6 +293,7 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
         download_sha256=download_sha256,
         download_size_bytes=download_size,
         crx_format=crx_format,
+        deep=deep_result,
         risk=risk,
         analyzed_at=datetime.utcnow(),
         download_error=download_error,
@@ -297,6 +306,7 @@ def analyze_bulk(
     inputs: list[ExtensionInput],
     max_workers: int = 8,
     console: Console | None = None,
+    deep: bool = False,
 ) -> list[AnalysisResult]:
     """
     Dispatch analysis for multiple extensions using a thread pool.
@@ -320,7 +330,7 @@ def analyze_bulk(
         task = progress.add_task(f"Analyzing {len(inputs)} extensions...", total=len(inputs))
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = {pool.submit(analyze_single, inp): inp for inp in inputs}
+            futures = {pool.submit(analyze_single, inp, deep): inp for inp in inputs}
 
             for future in as_completed(futures):
                 inp = futures[future]

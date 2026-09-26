@@ -1,5 +1,5 @@
 """
-Full analysis result dataclass - the container passed between all layers and reporters.
+Full analysis result dataclass — passed between all layers and reporters.
 """
 
 from __future__ import annotations
@@ -7,13 +7,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from ..analysis.permissions import PermissionAnalysis
-from ..core.enrichment import EnrichmentResult
-from ..core.manifest_parser import ExtensionManifest
-from ..core.store_meta import LivenessResult, StoreMeta
-from ..intel.sentry import SentryResult
-from ..intel.tpci import TPCIResult
-from ..scoring.aggregator import RiskReport
+from extanalyze.analysis.deep.findings import DeepAnalysisResult
+from extanalyze.analysis.permissions import PermissionAnalysis
+from extanalyze.core.enrichment import EnrichmentResult
+from extanalyze.core.manifest_parser import ExtensionManifest
+from extanalyze.core.store_meta import LivenessResult, StoreMeta
+from extanalyze.intel.sentry import SentryResult
+from extanalyze.intel.tpci import TPCIResult
+from extanalyze.scoring.aggregator import RiskReport
 
 
 @dataclass
@@ -38,8 +39,11 @@ class AnalysisResult:
     download_size_bytes: int
     crx_format: str
 
+    # Deep static analysis — populated only when --deep flag is set
+    deep: DeepAnalysisResult | None = None
+
     # Risk
-    risk: RiskReport
+    risk: RiskReport = field(default_factory=lambda: RiskReport(0, "SAFE", [], False, False))
 
     # Metadata
     analyzed_at: datetime = field(default_factory=datetime.utcnow)
