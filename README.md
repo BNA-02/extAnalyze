@@ -21,25 +21,20 @@ intelligence databases.
 - 11 CRITICAL and 16 HIGH risk permissions fully documented
 - 28 dangerous permission combination rules (COMBO_001 through COMBO_027)
 - Host permission scope classification: BROAD / SCOPED / MINIMAL
-- WebSocket (`ws://`, `wss://`) patterns correctly separated from named permissions
 - Permission necessity mapping against 15 extension categories
 
 **Multi-Browser**
-- Chrome: Chrome Web Store JSON API (no HTML scraping)
+- Chrome: Chrome Web Store JSON API
 - Edge: Microsoft Edge Add-ons product API
 - Firefox: Firefox AMO public REST API
 - Auto-detection: probes Chrome CRX API + Edge product API when no `--browser` flag given
-- Cross-listed extensions detected and annotated (Chrome + Edge)
 - Built-in browser extensions (PDF Viewer, Media Router) recognized and skipped
 
 **MV2 vs MV3 awareness**
 - Manifest version detected and displayed on every analysis
-- Permission abuse descriptions are version-aware
-- Combos gate on MV2-only / MV3-only where relevant
-- `webRequestBlocking` (MV2-only MITM) distinguished from read-only MV3 webRequest
+- Permission abuse descriptions are version-aware example : `webRequestBlocking` (MV2-only MITM) distinguished from read-only MV3 webRequest
 
 **Output**
-- Rich terminal report (color-coded risk, tables, combo details)
 - JSON (`--output json`) for CI/pipeline integration
 - Bulk mode: `--file ids.txt` with multithreaded analysis
 
@@ -48,7 +43,7 @@ intelligence databases.
 ## Installation
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/BNA-02/extAnalyze.git
 cd extanalyze
 python3 -m venv venv
 source venv/bin/activate
@@ -185,8 +180,9 @@ bandit -r extanalyze/ -c pyproject.toml
 pip-audit
 ```
 
-CI runs on push/PR via `.github/workflows/ci.yml`:
-lint → format check → unit tests → bandit → pip-audit.
+CI runs on push/PR via two workflows:
+- `.github/workflows/ci-dev.yml` — triggers on `develop` (fast feedback, single Python, informational SAST)
+- `.github/workflows/ci-main.yml` — triggers on PR to `main` (full matrix, hard SAST gate, build check)
 
 ---
 
