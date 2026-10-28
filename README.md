@@ -185,8 +185,6 @@ Examples:
 
 Cache lives at `~/.extanalyze/cache/`.
 
----
-
 ## Dynamic analysis (`--dynamic`)
 
 Static analysis never runs the extension. `--dynamic` additionally **executes it inside a disposable Docker sandbox** and observes what it does. It ships as an optional plugin so the core CLI stays light:
@@ -203,8 +201,6 @@ extanalyze <id> --dynamic          # add --dynamic-seconds N, --dynamic-network
 - **Scoring:** runtime-confirmed findings (`CR-RT-*`) are scored outside the static cap, with their own cap.
 - **Firefox specifics:** traffic goes through a recording proxy inside the container that answers every external request locally, so `--dynamic-network` has no effect on Firefox. Firefox's own housekeeping hosts are ignored, and attributing a request to the background page versus a content script is best effort.
 - **Limits:** evasive extensions (sleep timers, geo or user-agent checks, delayed activation) may not trigger; not exhaustive. A container is a strong boundary, not a perfect one: keep Docker up to date.
-
----
 
 ## Contributing
 
