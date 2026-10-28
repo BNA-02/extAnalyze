@@ -279,6 +279,20 @@ Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIG
 - **Permission necessity mapping**: rule-based heuristics per category, not semantic reasoning
 - **No Firefox built-in registry**: Firefox built-in extensions not enumerated
 
+## Library use and scoring weights
+
+```python
+from extanalyze.api import analyze_extension, preload_intel, rescore, to_record
+
+preload_intel()
+record = to_record(analyze_extension("gighmmpiobklfepjocnamgkkbiglidom"))  # flat, snippet-free JSON
+score, level = rescore(record)       # recompute offline, optionally with other weights
+```
+
+All scoring weights live in `extanalyze/data/scoring.json` (per-rule overrides in `rule_points`), and the score arithmetic in `extanalyze/scoring/signals.py`, so large-scale studies can re-score stored records without downloading anything again.
+
+---
+
 ## Acknowledgements
 
 - The Chrome extension ID to name catalog (`crx_catalog.csv`, snapshot of 2023-10-18) comes from [Mapping Chrome extension IDs to their names, part 2](https://www.hexacorn.com/blog/2023/10/20/mapping-chrome-extension-ids-to-their-names-part-2/) by Hexacorn. Thank you for publishing it.

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "combo_points": {"CRITICAL": 40, "HIGH": 20, "MEDIUM": 10, "LOW": 5},
+  "perm_points": {"CRITICAL": 8, "HIGH": 5, "MEDIUM": 2, "LOW": 0},
+  "code_points": {"CRITICAL": 15, "HIGH": 6, "MEDIUM": 2, "LOW": 0},
+  "rule_points": {},
+  "rt_points": {"CRITICAL": 40, "HIGH": 10, "MEDIUM": 5, "LOW": 0},
+  "exfil_flow_points": 10,
+  "code_review_cap": 40,
+  "dynamic_cap": 40,
+  "all_urls_points": 8,
+  "unexpected_permission_points": 5,
+  "ti": {
+    "tpci_confirm": {"3": 80, "2": 70, "1": 50, "0": 25},
+    "tpci_behavioral": {"malicious": 20, "suspicious": 10},
+    "tpci_ownership_transfer": 15,
+    "sentry_blocklist": 60,
+    "sentry_flagged": 30,
+    "google_malware": 70,
+    "store_removed": 5,
+    "confirmed_minimum_score": 41
+  },
+  "thresholds": [[71, "CRITICAL"], [41, "HIGH"], [21, "MEDIUM"], [1, "LOW"], [0, "SAFE"]]
+}

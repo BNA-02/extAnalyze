@@ -10,8 +10,11 @@ import re
 from dataclasses import dataclass
 
 import requests
+from lxml import etree
 
 from .http import get_limited
+
+_ID_RE = re.compile(r"^[a-p]{32}$")
 
 _HEADERS = {
     "User-Agent": (
@@ -413,6 +416,74 @@ def check_crx_liveness(ext_id: str, timeout: int = 10) -> LivenessResult:
         status_xml=status,
         raw_response=xml[:500],
     )
+
+
+@dataclass
+class UpdateInfo:
+    """One extension's answer from the batched Google update API."""
+
+    ext_id: str
+    status: str  # ok | noupdate | error-unknownApplication | error | ...
+    version: str = ""
+    size_bytes: int = 0
+    sha256: str = ""
+    codebase: str = ""
+    malware: bool = False  # _malware flag
+
+
+_UPDATE_BATCH_URL = (
+    "https://clients2.google.com/service/update2/crx?response=updatecheck&prodversion=130.0"
+    "&acceptformat=crx3"
+)
+MAX_UPDATE_BATCH = 50
+
+
+def check_updates(ext_ids: list[str], timeout: int = 20) -> dict[str, UpdateInfo]:
+    """Ask the update API about many extensions at once, without downloading anything.
+
+    With v=0.0.0 every live extension answers with its current version, size and SHA-256, so
+    this is the cheap way to detect changes. Unknown or removed IDs come back with an error or
+    `noupdate` status. Batches are capped at MAX_UPDATE_BATCH IDs per request.
+    """
+    out: dict[str, UpdateInfo] = {}
+    for i in range(0, len(ext_ids), MAX_UPDATE_BATCH):
+        batch = ext_ids[i : i + MAX_UPDATE_BATCH]
+        query = "".join(f"&x=id%3D{e}%26v%3D0.0.0%26uc" for e in batch if _ID_RE.match(e))
+        if not query:
+            continue
+        try:
+            resp = get_limited(_UPDATE_BATCH_URL + query, headers=_HEADERS, timeout=timeout)
+            out.update(parse_update_response(resp.content))
+        except requests.RequestException:
+            for e in batch:
+                out.setdefault(e, UpdateInfo(e, "error"))
+    return out
+
+
+def parse_update_response(xml_bytes: bytes) -> dict[str, UpdateInfo]:
+    """Parse a (possibly multi-app) update API response. Hardened against hostile XML."""
+    parser = etree.XMLParser(resolve_entities=False, no_network=True, huge_tree=False)
+    try:
+        root = etree.fromstring(xml_bytes, parser)  # noqa: S320 - entity resolution disabled
+    except etree.XMLSyntaxError:
+        return {}
+    out: dict[str, UpdateInfo] = {}
+    for app in root.iter("{*}app"):
+        ext_id = app.get("appid", "")
+        if not _ID_RE.match(ext_id):
+            continue
+        check = next(app.iter("{*}updatecheck"), None)
+        status = (check.get("status") if check is not None else None) or app.get("status", "")
+        info = UpdateInfo(ext_id=ext_id, status=status)
+        if check is not None:
+            info.version = (check.get("version") or "")[:64]
+            info.sha256 = (check.get("hash_sha256") or "")[:64]
+            info.codebase = (check.get("codebase") or "")[:500]
+            info.malware = (check.get("_malware") or "").lower() == "true"
+            size = check.get("size") or ""
+            info.size_bytes = int(size) if size.isdigit() else 0
+        out[ext_id] = info
+    return out
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
