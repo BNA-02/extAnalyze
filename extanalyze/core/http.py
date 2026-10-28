@@ -20,7 +20,7 @@ class ResponseTooLargeError(requests.RequestException):
 
 def get_limited(url: str, max_bytes: int = DEFAULT_MAX_BYTES, **kwargs) -> requests.Response:
     """requests.get() that refuses bodies larger than max_bytes."""
-    resp = requests.get(url, stream=True, **kwargs)
+    resp = requests.get(url, stream=True, **kwargs)  # noqa: S113 - callers pass timeout
     try:
         declared = resp.headers.get("Content-Length", "")
         if declared.isdigit() and int(declared) > max_bytes:

@@ -14,6 +14,7 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
 from .analysis.categorizer import categorize
+from .analysis.code_review import review_directory
 from .analysis.permissions import analyze as analyze_permissions
 from .core.downloader import ExtensionNotDownloadableError, download
 from .core.enrichment import enrich
@@ -204,6 +205,8 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
     crx_format = ""
     dl = None
     extract_result = None
+    code_review = None
+    code_review_error = ""
 
     if is_builtin:
         # Builtin extensions are baked into the browser binary — no CRX to download.
@@ -231,7 +234,12 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
                     text_for_cat = (
                         (enrichment.name or "")
                         + " "
-                        + (enrichment.description or store.description or manifest.description or "")
+                        + (
+                            enrichment.description
+                            or store.description
+                            or manifest.description
+                            or ""
+                        )
                     )
                     category, confidence = categorize(enrichment.name or "", text_for_cat)
 
@@ -239,6 +247,12 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
 
                 except Exception as e:
                     manifest_error = str(e)
+
+                # ── Step 8b: Static code review (never executes extension code) ──
+                try:
+                    code_review = review_directory(extract_result.tmp_dir, extract_result.files)
+                except Exception as e:
+                    code_review_error = str(e)
 
             except ExtractionError as e:
                 download_error = f"Extraction failed: {e}"
@@ -272,7 +286,7 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
             category_confidence="UNKNOWN",
         )
 
-    risk = aggregate(tpci_result, sentry_result, liveness, perm_analysis)
+    risk = aggregate(tpci_result, sentry_result, liveness, perm_analysis, code_review)
 
     return AnalysisResult(
         ext_id=ext_id,
@@ -292,6 +306,8 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
         download_error=download_error,
         manifest_error=manifest_error,
         is_builtin=is_builtin,
+        code_review=code_review,
+        code_review_error=code_review_error,
     )
 
 

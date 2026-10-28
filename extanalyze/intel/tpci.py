@@ -15,8 +15,6 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-import requests
-
 from ..core.http import get_limited
 
 _RAW_URL = (

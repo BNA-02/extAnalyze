@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from ..analysis.code_review import CodeReviewResult
 from ..analysis.permissions import PermissionAnalysis
 from ..core.enrichment import EnrichmentResult
 from ..core.manifest_parser import ExtensionManifest
@@ -43,6 +44,8 @@ class AnalysisResult:
 
     # Metadata
     analyzed_at: datetime = field(default_factory=datetime.utcnow)
-    download_error: str = ""   # non-empty if download failed
-    manifest_error: str = ""   # non-empty if manifest parse failed
-    is_builtin: bool = False   # True for extensions baked into the browser
+    download_error: str = ""  # non-empty if download failed
+    manifest_error: str = ""  # non-empty if manifest parse failed
+    is_builtin: bool = False  # True for extensions baked into the browser
+    code_review: CodeReviewResult | None = None  # None if extraction/review did not run
+    code_review_error: str = ""  # non-empty if the code review step failed

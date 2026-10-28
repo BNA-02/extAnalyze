@@ -227,8 +227,28 @@ tests/
 
 ---
 
+## Code review
+
+After extraction, `extanalyze/analysis/code_review.py` statically scans the extension's JS and HTML (never executing it) for:
+
+- **Dynamic code loading**: `eval`, `new Function`, `importScripts`/`import()` of remote URLs, runtime script injection, remote `<script src>`
+- **Exfiltration channels**: `sendBeacon`, POSTs to hard-coded URLs, WebSockets, pixel beacons
+- **Sensitive data access**: cookies, history, password fields, keystrokes, clipboard, request interception
+- **Obfuscation**: `_0x` identifiers, base64 blobs, `fromCharCode` chains, escape runs
+- **Exfiltration flows**: a file that both reads sensitive data and has an outbound channel
+- **External domains** referenced in the code
+
+These are heuristic leads for manual review, not verdicts: minified libraries trigger some rules legitimately. Score contribution is capped at 30 points.
+
+## Dependencies
+
+Runtime dependencies are hash-pinned in `requirements.lock` (regenerate with the command in `requirements.txt`). Install reproducibly with `pip install --require-hashes -r requirements.lock`.
+
+---
+
 ## Limitations
 
+- **Regex-based code review** — no AST or data-flow analysis; obfuscated or split-up code can evade it
 - **Static analysis only** — no dynamic execution, no runtime network capture
 - **CRX catalog snapshot** — Chrome catalog dated 2023-10-18; newer extensions fall back to live store metadata
 - **CWS JSON API** — undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend

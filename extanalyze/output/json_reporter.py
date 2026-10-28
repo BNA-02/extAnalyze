@@ -22,7 +22,7 @@ def _serializable(obj):
         return str(obj)
     if isinstance(obj, dict):
         return {k: _serializable(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, list | tuple):
         return [_serializable(i) for i in obj]
     return obj
 

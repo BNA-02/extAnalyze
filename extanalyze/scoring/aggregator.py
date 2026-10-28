@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..analysis.code_review import CodeReviewResult
 from ..analysis.permissions import PermissionAnalysis
 from ..core.store_meta import LivenessResult
 from ..intel.sentry import SentryResult
@@ -26,6 +27,11 @@ COMBO_POINTS = {"CRITICAL": 40, "HIGH": 20, "MEDIUM": 10, "LOW": 5}
 
 # Per-sensitivity point values for individual permissions
 PERM_POINTS = {"CRITICAL": 8, "HIGH": 5, "MEDIUM": 2, "LOW": 0}
+
+# Code review scoring (per distinct rule hit; total capped)
+CODE_POINTS = {"HIGH": 6, "MEDIUM": 2, "LOW": 0}
+EXFIL_FLOW_POINTS = 10
+CODE_REVIEW_CAP = 30
 
 # Thresholds
 THRESHOLDS = [
@@ -59,6 +65,7 @@ def aggregate(
     sentry: SentryResult,
     liveness: LivenessResult,
     perm_analysis: PermissionAnalysis,
+    code_review: CodeReviewResult | None = None,
 ) -> RiskReport:
     score = 0
     reasons: list[str] = []
@@ -166,6 +173,21 @@ def aggregate(
             f"{len(unexpected)} permission(s) not expected for category "
             f"'{perm_analysis.category}': {perm_names}"
         )
+
+    # ── Code review (heuristic: capped so minified libraries can't dominate) ─
+    if code_review is not None:
+        cr_points = 0
+        for f in code_review.findings:
+            cr_points += CODE_POINTS.get(f.severity, 0)
+            if f.severity == "HIGH":
+                reasons.append(f"[{f.rule_id}] {f.name}: {f.description} ({f.count} occurrence(s))")
+        for flow_file in code_review.exfil_flows:
+            cr_points += EXFIL_FLOW_POINTS
+            reasons.append(
+                f"Possible data exfiltration flow: {flow_file} reads sensitive data "
+                "and has an outbound network channel"
+            )
+        score += min(cr_points, CODE_REVIEW_CAP)
 
     # ── Shortcircuit: TI confirmed -> minimum HIGH ───────────────────────
     if ti_confirmed and score < 41:
