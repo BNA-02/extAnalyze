@@ -17,12 +17,15 @@ from pathlib import Path
 
 import requests
 
+from ..core.http import get_limited
+
 _RAW_URL = (
     "https://raw.githubusercontent.com/The-Privacy-Commons-Institute/"
     "chrome-mal-ids/master/data/current-list.json"
 )
 _CACHE_DIR = Path.home() / ".extanalyze" / "cache"
 _CACHE_TTL_SECONDS = 86400  # 24 hours
+_MAX_DATASET_BYTES = 25 * 1024 * 1024  # 25 MB cap on the downloaded dataset
 
 
 @dataclass
@@ -64,7 +67,7 @@ def _is_cache_valid(path: Path) -> bool:
 def _download_and_cache(cache_path: Path) -> dict:
     print("[intel/tpci] Downloading TPCI dataset...", file=sys.stderr)
     try:
-        resp = requests.get(_RAW_URL, timeout=30)
+        resp = get_limited(_RAW_URL, max_bytes=_MAX_DATASET_BYTES, timeout=30)
         resp.raise_for_status()
     except Exception as e:
         print(f"[intel/tpci] Download failed: {e}", file=sys.stderr)

@@ -239,4 +239,6 @@ tests/
 
 ## License
 
-Private. All rights reserved.
+Released under the [MIT License](LICENSE). You are free to use, modify and build on this tool, including in your own security research and tooling.
+
+See [SECURITY.md](SECURITY.md) for how to report vulnerabilities.

@@ -13,6 +13,8 @@ from pathlib import Path
 
 import requests
 
+from .http import get_limited
+
 # Chrome/Edge CWS download endpoint (Chrome only — returns 404 for Edge-only IDs)
 _CWS_DOWNLOAD_URL = (
     "https://clients2.google.com/service/update2/crx"
@@ -138,7 +140,7 @@ def _get_firefox_download_url(ext_id: str, timeout: int = 10) -> str:
     """Resolve Firefox extension ID to actual .xpi download URL via AMO API."""
     url = _AMO_ADDON_URL.format(ext_id=ext_id)
     try:
-        resp = requests.get(url, headers=_HEADERS, timeout=timeout)
+        resp = get_limited(url, headers=_HEADERS, timeout=timeout)
     except requests.RequestException as e:
         raise ExtensionNotDownloadableError(f"AMO API error: {e}") from e
 
