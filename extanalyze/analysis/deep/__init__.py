@@ -1,7 +1,8 @@
 """
 --deep extras. Adds three things on top of the always-on code review:
 
-1. Entropy analysis and static deobfuscation (decoded strings are re-scanned)
+1. Entropy analysis, static deobfuscation (decoded strings are re-scanned) and an AST
+   data-flow check (sensitive data reaching network calls)
 2. RetireJS: known-vulnerable bundled JavaScript libraries
 3. VirusTotal domain reputation lookups (only when VIRUSTOTAL_API_KEY is set)
 
@@ -17,10 +18,11 @@ from ..code_review import (
     CodeFinding,
     CodeReviewResult,
     Location,
+    iter_sources,
     record,
     sort_findings,
 )
-from . import deobfuscate
+from . import deobfuscate, flows
 from .retire_js import scan_file as retire_scan
 from .vt_lookup import lookup_domains
 
@@ -40,6 +42,9 @@ def run_deep_analysis(extract_result, review: CodeReviewResult) -> None:
 
     # 1. Entropy + deobfuscation
     hidden = deobfuscate.analyze(tmp_dir, extract_result.files, findings)
+
+    # 1b. AST data-flow check (sensitive source to network sink)
+    flows.analyze(iter_sources(tmp_dir, extract_result.files), findings)
 
     # 2. RetireJS over all JS files (vendor directories included)
     for rel in extract_result.js_files:

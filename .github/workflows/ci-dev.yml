@@ -1,8 +1,8 @@
-name: CI — Dev
+name: CI - Dev
 
 # Fast feedback on every push/PR to develop.
 # Single Python version, informational SAST (warnings don't block),
-# no build check — iterate quickly, catch issues early.
+# no build check - iterate quickly, catch issues early.
 # Pass all jobs here before opening a PR to main.
 
 on:
@@ -24,7 +24,7 @@ jobs:
 
   # ── 1. Workflow security audit (zizmor) ────────────────────────────────────
   zizmor:
-    name: Workflow Audit — zizmor
+    name: Workflow Audit - zizmor
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,7 +39,7 @@ jobs:
 
       - name: Run zizmor
         # Audit all workflow files for CI security issues.
-        # Offline mode (no token) — metadata audits only; good enough for private repos.
+        # Offline mode (no token) - metadata audits only; good enough for private repos.
         run: |
           zizmor .github/workflows/ || true
 
@@ -63,7 +63,7 @@ jobs:
 
   # ── 3. SAST ────────────────────────────────────────────────────────────────
   sast:
-    name: SAST — Bandit (informational)
+    name: SAST - Bandit (informational)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -97,7 +97,7 @@ jobs:
 
   # ── 4. SCA ─────────────────────────────────────────────────────────────────
   sca:
-    name: SCA — pip-audit + guarddog
+    name: SCA - pip-audit + guarddog
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -113,7 +113,7 @@ jobs:
           enable-cache: false
       - run: uv sync --frozen --extra dev --python "3.12"
 
-      - name: pip-audit — known CVEs
+      - name: pip-audit - known CVEs
         run: |
           uv export --frozen --no-emit-project --format requirements-txt -o audit-requirements.txt
           uv run --no-sync pip-audit \
@@ -122,7 +122,7 @@ jobs:
             --format markdown \
             --output pip-audit-results.md
 
-      - name: guarddog — malicious package heuristics
+      - name: guarddog - malicious package heuristics
         run: |
           PKGS=$(uv export --frozen --no-emit-project --no-hashes --format requirements-txt | grep -E '^[A-Za-z0-9]' | sed 's/[ ;=<>].*//')
           FAILED=0
@@ -150,7 +150,7 @@ jobs:
 
   # ── 5. Tests ───────────────────────────────────────────────────────────────
   test:
-    name: Tests — Python 3.12
+    name: Tests - Python 3.12
     runs-on: ubuntu-latest
     permissions:
       contents: read

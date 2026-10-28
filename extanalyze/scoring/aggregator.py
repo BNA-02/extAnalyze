@@ -28,7 +28,7 @@ COMBO_POINTS = {"CRITICAL": 40, "HIGH": 20, "MEDIUM": 10, "LOW": 5}
 # Per-sensitivity point values for individual permissions
 PERM_POINTS = {"CRITICAL": 8, "HIGH": 5, "MEDIUM": 2, "LOW": 0}
 
-# Code review scoring (per distinct rule hit; total capped)
+# Code review scoring (per distinct rule hit; total capped, VirusTotal findings excluded from the cap)
 CODE_POINTS = {"CRITICAL": 15, "HIGH": 6, "MEDIUM": 2, "LOW": 0}
 EXFIL_FLOW_POINTS = 10
 CODE_REVIEW_CAP = 40
@@ -178,6 +178,11 @@ def aggregate(
     if code_review is not None:
         cr_points = 0
         for f in code_review.findings:
+            if f.rule_id == "CR-DEEP-VT":
+                # External reputation signal: scored outside the code-review cap
+                score += CODE_POINTS.get(f.severity, 0)
+                reasons.append(f"[{f.rule_id}] {f.name}: {f.description}")
+                continue
             cr_points += CODE_POINTS.get(f.severity, 0)
             if f.severity in ("CRITICAL", "HIGH"):
                 reasons.append(f"[{f.rule_id}] {f.name}: {f.description} ({f.count} occurrence(s))")

