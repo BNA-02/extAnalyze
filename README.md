@@ -59,6 +59,17 @@ intelligence databases.
 
 ## Installation
 
+Debian, Ubuntu, Kali (self-contained `.deb`, bundles its own Python under `/opt/extanalyze`):
+
+```bash
+# Download the .deb and SHA256SUMS from the latest GitHub Release, then:
+sha256sum -c --ignore-missing SHA256SUMS
+sudo apt install ./extanalyze_*_amd64.deb
+extanalyze --version
+```
+
+Build it yourself with `packaging/build-deb.sh` (needs `uv` and `dpkg-deb`). A signed apt repository is planned.
+
 From a clone (pip):
 
 ```bash
