@@ -129,9 +129,6 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
         reason = result.download_error or result.manifest_error
         console.print(f"\n[dim]Static analysis skipped — {reason}[/dim]")
 
-    if result.deep is not None:
-        _print_deep(console, result)
-
     if not result.is_builtin:
         if result.download_error:
             console.print(f"\n[red][!] Download failed:[/red] {result.download_error}")
@@ -347,6 +344,18 @@ def _print_code_review(console: Console, result: AnalysisResult) -> None:
         console.print(
             f"\n  External domains referenced: {shown}" + (f" (+{more} more)" if more > 0 else "")
         )
+    for label, items in (("IP addresses", cr.ips), ("Bitcoin addresses", cr.btc_addresses)):
+        if items:
+            shown = ", ".join(escape(i["address"]) for i in items[:5])
+            console.print(
+                f"  {label}: {shown}" + (f" (+{len(items) - 5} more)" if len(items) > 5 else "")
+            )
+    flagged = [v for v in cr.vt_results if v.get("malicious", 0) or v.get("suspicious", 0)]
+    if cr.deep:
+        console.print(
+            f"  [dim]--deep: entropy/deobfuscation, {len(cr.retire_js)} vulnerable library hit(s), "
+            f"{len(cr.vt_results)} VirusTotal lookup(s), {len(flagged)} flagged[/dim]"
+        )
     if cr.files_skipped:
         console.print(f"  [yellow]{len(cr.files_skipped)} file(s) skipped (size limits)[/yellow]")
 
@@ -445,104 +454,3 @@ def _liveness_detail(liveness) -> str:
     if liveness.store_likely_removed:
         return f"[yellow]Likely removed from CWS (status={source})[/yellow]"
     return f"status={source}"
-
-
-def _print_deep(console: Console, result: AnalysisResult) -> None:
-    """Render the Deep Static Analysis section."""
-    deep = result.deep
-    if deep is None:
-        return
-
-    sev_color = {"CRITICAL": "bold red", "HIGH": "red", "MEDIUM": "yellow", "LOW": "dim"}
-    cat_icon = {
-        "EXEC": "⚙",
-        "EXFIL": "📤",
-        "C2": "📡",
-        "OBFUSCATION": "🔒",
-        "REMOTE_LOAD": "🌐",
-        "SECRET": "🔑",
-        "NETWORK": "🕸",
-        "VULN": "⚠",
-    }
-
-    total = len(deep.findings)
-    console.print(
-        f"\n[bold underline]Deep Static Analysis[/bold underline]"
-        f"  ({deep.js_files} JS files · {deep.html_files} inline scripts · "
-        f"{deep.files_analyzed} total files)"
-    )
-
-    if total == 0 and not deep.retire_js and not deep.urls_found:
-        console.print("  [green]No suspicious patterns detected.[/green]")
-    else:
-        console.print(
-            f"  [bold red]{deep.critical_count} CRITICAL[/bold red]  "
-            f"[red]{deep.high_count} HIGH[/red]  "
-            f"[yellow]{deep.medium_count} MEDIUM[/yellow]  "
-            f"[dim]{deep.low_count} LOW[/dim]  "
-            f"findings"
-        )
-
-    # ── Code Findings ─────────────────────────────────────────────────────
-    if deep.findings:
-        console.print(f"\n  [bold]Code Findings[/bold]  ({total} total, showing top 20):")
-        shown = sorted(
-            deep.findings,
-            key=lambda f: {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}.get(f.severity, 4),
-        )[:20]
-        for f in shown:
-            color = sev_color.get(f.severity, "white")
-            icon = cat_icon.get(f.category, "•")
-            loc = f":{f.line}" if f.line else ""
-            console.print(
-                f"  [{color}][{f.severity}][/{color}] {icon} "
-                f"[cyan]{f.file}{loc}[/cyan]  "
-                f"[bold]{f.title}[/bold]"
-            )
-            if f.snippet:
-                console.print(f"    [dim]{f.snippet[:100]}[/dim]")
-
-    # ── Vulnerable Libraries ───────────────────────────────────────────────
-    if deep.retire_js:
-        console.print(f"\n  [bold]Vulnerable Libraries[/bold]  ({len(deep.retire_js)}):")
-        for hit in deep.retire_js:
-            vulns = hit.get("vulnerabilities", [])
-            cves = []
-            for v in vulns:
-                cves.extend(v.get("identifiers", {}).get("CVE", []))
-            sev_list = list({v.get("severity", "?") for v in vulns})
-            console.print(
-                f"  [red]⚠[/red] [bold]{hit['component']}[/bold] v{hit['version']}  "
-                f"[dim]{hit['file']}[/dim]"
-                + (f"  CVE: {', '.join(cves[:3])}" if cves else "")
-                + (f"  [{', '.join(sev_list)}]" if sev_list else "")
-            )
-
-    # ── Extracted Intel ───────────────────────────────────────────────────
-    if deep.urls_found or deep.ips_found or deep.emails_found or deep.btc_found:
-        console.print("\n  [bold]Extracted Intelligence[/bold]:")
-        if deep.urls_found:
-            console.print(f"    URLs:          {len(deep.urls_found)}")
-        if deep.ips_found:
-            console.print(f"    IP addresses:  {len(deep.ips_found)}")
-            for ip in deep.ips_found[:5]:
-                console.print(f"      [cyan]{ip['address']}[/cyan]  [dim]{ip['file']}[/dim]")
-        if deep.emails_found:
-            console.print(f"    Emails:        {len(deep.emails_found)}")
-        if deep.btc_found:
-            console.print(f"    [yellow]Bitcoin addresses: {len(deep.btc_found)}[/yellow]")
-        if deep.base64_found:
-            console.print(f"    Base64 strings: {len(deep.base64_found)}")
-
-    # ── VirusTotal domain results ─────────────────────────────────────────
-    if deep.vt_results:
-        flagged = [
-            v for v in deep.vt_results if v.get("malicious", 0) > 0 or v.get("suspicious", 0) > 0
-        ]
-        if flagged:
-            console.print(f"\n  [bold]VirusTotal Domain Results[/bold]  ({len(flagged)} flagged):")
-            for v in flagged:
-                console.print(
-                    f"  [red]⚠[/red] [bold]{v['domain']}[/bold]  "
-                    f"malicious={v['malicious']}  suspicious={v['suspicious']}"
-                )

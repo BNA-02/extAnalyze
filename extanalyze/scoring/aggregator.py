@@ -29,9 +29,9 @@ COMBO_POINTS = {"CRITICAL": 40, "HIGH": 20, "MEDIUM": 10, "LOW": 5}
 PERM_POINTS = {"CRITICAL": 8, "HIGH": 5, "MEDIUM": 2, "LOW": 0}
 
 # Code review scoring (per distinct rule hit; total capped)
-CODE_POINTS = {"HIGH": 6, "MEDIUM": 2, "LOW": 0}
+CODE_POINTS = {"CRITICAL": 15, "HIGH": 6, "MEDIUM": 2, "LOW": 0}
 EXFIL_FLOW_POINTS = 10
-CODE_REVIEW_CAP = 30
+CODE_REVIEW_CAP = 40
 
 # Thresholds
 THRESHOLDS = [
@@ -65,7 +65,6 @@ def aggregate(
     sentry: SentryResult,
     liveness: LivenessResult,
     perm_analysis: PermissionAnalysis,
-    deep_result=None,  # DeepAnalysisResult | None, avoids circular import
     code_review: CodeReviewResult | None = None,
 ) -> RiskReport:
     score = 0
@@ -176,12 +175,11 @@ def aggregate(
         )
 
     # ── Code review (heuristic: capped so minified libraries can't dominate) ─
-    # Skipped when --deep ran: its JS rules overlap, and scoring both would double count.
-    if code_review is not None and deep_result is None:
+    if code_review is not None:
         cr_points = 0
         for f in code_review.findings:
             cr_points += CODE_POINTS.get(f.severity, 0)
-            if f.severity == "HIGH":
+            if f.severity in ("CRITICAL", "HIGH"):
                 reasons.append(f"[{f.rule_id}] {f.name}: {f.description} ({f.count} occurrence(s))")
         for flow_file in code_review.exfil_flows:
             cr_points += EXFIL_FLOW_POINTS
@@ -195,29 +193,6 @@ def aggregate(
     if ti_confirmed and score < 41:
         score = 41
         reasons.insert(0, "[!] TI confirmed malicious — minimum score raised to HIGH")
-
-    # ── Deep static analysis contribution ────────────────────────────────
-    if deep_result is not None:
-        deep_score = deep_result.total_score
-        if deep_score > 0:
-            score += deep_score
-            # Surface the most severe findings as risk reasons (top 5)
-            severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
-            top_findings = sorted(
-                deep_result.findings,
-                key=lambda f: severity_order.get(f.severity, 4),
-            )[:5]
-            for f in top_findings:
-                reasons.append(
-                    f"[DEEP:{f.rule_id}] {f.title} ({f.severity}): {f.description[:120]}"
-                )
-            # Vulnerable libraries
-            if deep_result.retire_js:
-                reasons.append(
-                    f"{len(deep_result.retire_js)} vulnerable JS "
-                    f"{'library' if len(deep_result.retire_js) == 1 else 'libraries'} "
-                    "detected (RetireJS)"
-                )
 
     # ── Determine level ──────────────────────────────────────────────────
     level = "SAFE"

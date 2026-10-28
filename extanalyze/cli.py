@@ -86,9 +86,10 @@ def main():
     is_flag=True,
     default=False,
     help=(
-        "Enable deep static analysis: JS/HTML pattern scanning, entropy analysis, "
-        "RetireJS vulnerable library detection, URL/IP/email extraction. "
-        "Significantly slower. Set VIRUSTOTAL_API_KEY for optional domain reputation checks."
+        "Add deep extras to the always-on code review: entropy analysis and static "
+        "deobfuscation, RetireJS vulnerable-library detection, and VirusTotal domain "
+        "lookups (needs VIRUSTOTAL_API_KEY; sends domains found in the extension to VirusTotal). "
+        "Slower."
     ),
 )
 def analyze(ext_id, input_file, browser, output, out_dir, workers, catalog, rebuild_catalog, deep):

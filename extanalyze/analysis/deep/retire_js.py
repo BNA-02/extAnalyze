@@ -100,7 +100,9 @@ def scan_file(rel_path: str, content: str) -> list[dict]:
     if not db:
         return []
 
-    sha1 = hashlib.sha1(content.encode("utf-8", errors="replace")).hexdigest()  # noqa: S324
+    sha1 = hashlib.sha1(  # retire.js signatures are SHA1; not a security use
+        content.encode("utf-8", errors="replace"), usedforsecurity=False
+    ).hexdigest()
     results = []
 
     for component, info in db.items():

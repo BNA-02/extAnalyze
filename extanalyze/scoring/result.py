@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from extanalyze.analysis.code_review import CodeReviewResult
-from extanalyze.analysis.deep.findings import DeepAnalysisResult
 from extanalyze.analysis.permissions import PermissionAnalysis
 from extanalyze.core.enrichment import EnrichmentResult
 from extanalyze.core.manifest_parser import ExtensionManifest
@@ -39,9 +38,6 @@ class AnalysisResult:
     download_sha256: str
     download_size_bytes: int
     crx_format: str
-
-    # Deep static analysis — populated only when --deep flag is set
-    deep: DeepAnalysisResult | None = None
 
     # Risk
     risk: RiskReport = field(default_factory=lambda: RiskReport(0, "SAFE", [], False, False))

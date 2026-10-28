@@ -227,16 +227,26 @@ tests/
 
 ## Code review
 
-After extraction, `extanalyze/analysis/code_review.py` statically scans the extension's JS and HTML (never executing it) for:
+After extraction, `extanalyze/analysis/code_review.py` statically scans the extension's JS and HTML (never executing it) with about 45 rules:
 
 - **Dynamic code loading**: `eval`, `new Function`, `importScripts`/`import()` of remote URLs, runtime script injection, remote `<script src>`
-- **Exfiltration channels**: `sendBeacon`, POSTs to hard-coded URLs, WebSockets, pixel beacons
+- **Exfiltration and C2**: `sendBeacon`, POSTs and fetches to hard-coded URLs, WebSockets, pixel beacons, polling, messaging other extensions
 - **Sensitive data access**: cookies, history, password fields, keystrokes, clipboard, request interception
-- **Obfuscation**: `_0x` identifiers, base64 blobs, `fromCharCode` chains, escape runs
+- **Secrets**: hard-coded API keys, AWS keys, private keys, tokens (matched text is redacted in reports)
+- **Obfuscation**: packers, `_0x` identifiers, base64 blobs, `fromCharCode` chains, escape runs
+- **CSP weaknesses** in `manifest.json`
 - **Exfiltration flows**: a file that both reads sensitive data and has an outbound channel
-- **External domains** referenced in the code
+- **Intel**: external domains, public IP addresses and Bitcoin addresses found in the code
 
-These are heuristic leads for manual review, not verdicts: minified libraries trigger some rules legitimately. Score contribution is capped at 30 points.
+Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIGH and CRITICAL rules. Findings are heuristic leads for manual review, not verdicts. Score contribution is capped at 40 points.
+
+### `--deep`
+
+`--deep` adds three extras to the same result (same findings list, same scoring):
+
+- **Entropy analysis and static deobfuscation**: decodes base64 literals, hex/unicode escapes and `fromCharCode` lists, then re-runs the rules on the decoded text
+- **RetireJS**: known-vulnerable bundled JavaScript libraries
+- **VirusTotal**: domain reputation lookups when `VIRUSTOTAL_API_KEY` is set. Domains found in the extension are sent to VirusTotal.
 
 ---
 

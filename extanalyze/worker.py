@@ -201,7 +201,6 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
     manifest_error = ""
     manifest = None
     perm_analysis = None
-    deep_result = None
     download_sha256 = ""
     download_size = 0
     crx_format = ""
@@ -247,18 +246,20 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
 
                     perm_analysis = analyze_permissions(manifest, category, confidence)
 
-                    # ── Step 9: Deep static analysis (optional) ───────────────
-                    if deep:
-                        deep_result = run_deep_analysis(extract_result, manifest)
-                    else:
-                        deep_result = None
-
                 except Exception as e:
                     manifest_error = str(e)
 
                 # ── Step 8b: Static code review (never executes extension code) ──
                 try:
-                    code_review = review_directory(extract_result.tmp_dir, extract_result.files)
+                    code_review = review_directory(
+                        extract_result.tmp_dir,
+                        extract_result.files,
+                        csp=getattr(manifest, "content_security_policy", None),
+                        manifest_version=getattr(manifest, "manifest_version", 3),
+                    )
+                    # --deep adds entropy/deobfuscation, RetireJS and VirusTotal to the same result
+                    if deep:
+                        run_deep_analysis(extract_result, code_review)
                 except Exception as e:
                     code_review_error = str(e)
 
@@ -299,7 +300,6 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
         sentry_result,
         liveness,
         perm_analysis,
-        deep_result=deep_result,
         code_review=code_review,
     )
 
@@ -316,7 +316,6 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
         download_sha256=download_sha256,
         download_size_bytes=download_size,
         crx_format=crx_format,
-        deep=deep_result,
         risk=risk,
         analyzed_at=datetime.utcnow(),
         download_error=download_error,
