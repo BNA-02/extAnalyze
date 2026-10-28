@@ -197,11 +197,12 @@ extanalyze dynamic pull            # download the sandbox images (or: extanalyze
 extanalyze <id> --dynamic          # add --dynamic-seconds N, --dynamic-network
 ```
 
-- **What it does:** loads the extension in headless Chromium, browses local test pages that impersonate popular sites (login and card forms, cookies and localStorage seeded with unique canary values), and records every external request. If a canary value shows up in an outbound request (raw, URL-encoded, base64, hex), that is confirmed exfiltration (`CR-RT-001`, CRITICAL).
-- **Images:** `chromium-mv3` (current Chrome for Testing) and `chromium-mv2` (Chrome for Testing 126, the last line that loads Manifest V2 extensions). Built on Red Hat Hardened Images (`registry.access.redhat.com/hi/nodejs`, non-root, no package manager), browsers pinned by version and SHA-256.
+- **What it does:** loads the extension in headless Chromium or Firefox, browses local test pages that impersonate popular sites (login and card forms, cookies and localStorage seeded with unique canary values), and records every external request. If a canary value shows up in an outbound request (raw, URL-encoded, base64, hex), that is confirmed exfiltration (`CR-RT-001`, CRITICAL).
+- **Images:** `chromium-mv3` (current Chrome for Testing), `chromium-mv2` (Chrome for Testing 126, the last line that loads Manifest V2 extensions) and `firefox` (current Firefox driven through geckodriver, since Playwright cannot load Firefox extensions). The right image is picked per extension from its browser and manifest version, so mixed batches work; the dynamic step runs one container at a time. Built on Red Hat Hardened Images (`registry.access.redhat.com/hi/nodejs`, non-root, no package manager), browsers and geckodriver pinned by version and SHA-256.
 - **Isolation:** no network by default (attempts are still observed, nothing leaves), read-only filesystem, all capabilities dropped, no-new-privileges, pid/memory/cpu limits, extension mounted read-only, host-side timeout. `--dynamic-network` lets it reach the real internet; use it only on a machine you are willing to expose.
 - **Scoring:** runtime-confirmed findings (`CR-RT-*`) are scored outside the static cap, with their own cap.
-- **Limits:** Chromium only for now (Firefox is planned); evasive extensions (sleep timers, geo or user-agent checks, delayed activation) may not trigger; not exhaustive. A container is a strong boundary, not a perfect one: keep Docker up to date.
+- **Firefox specifics:** traffic goes through a recording proxy inside the container that answers every external request locally, so `--dynamic-network` has no effect on Firefox. Firefox's own housekeeping hosts are ignored, and attributing a request to the background page versus a content script is best effort.
+- **Limits:** evasive extensions (sleep timers, geo or user-agent checks, delayed activation) may not trigger; not exhaustive. A container is a strong boundary, not a perfect one: keep Docker up to date.
 
 ---
 

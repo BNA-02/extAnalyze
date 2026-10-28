@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [chromium-mv3, chromium-mv2]
+        target: [chromium-mv3, chromium-mv2, firefox]
     env:
       IMAGE: ghcr.io/bna-02/extanalyze-sandbox
     steps:
@@ -49,6 +49,7 @@ jobs:
           case "$TARGET" in
             chromium-mv3) K="sandbox_detects_exfiltration" ;;
             chromium-mv2) K="mv2_sandbox" ;;
+            firefox) K="firefox_sandbox" ;;
           esac
           uv run --no-sync pytest tests/test_dynamic.py -m integration -k "$K" -v
 

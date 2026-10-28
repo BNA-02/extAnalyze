@@ -16,7 +16,7 @@ from .schema import MAX_OUTPUT_BYTES, InvalidDriverOutput, validate
 
 REGISTRY_IMAGE = "ghcr.io/bna-02/extanalyze-sandbox"
 LOCAL_IMAGE = "extanalyze-sandbox"
-TARGETS = ("chromium-mv3", "chromium-mv2")  # firefox: planned
+TARGETS = ("chromium-mv3", "chromium-mv2", "firefox")
 
 
 class DynamicUnavailable(RuntimeError):
@@ -25,7 +25,7 @@ class DynamicUnavailable(RuntimeError):
 
 def pick_target(browser: str, manifest_version: int) -> str:
     if browser == "firefox":
-        raise DynamicUnavailable("Dynamic analysis of Firefox extensions is not available yet")
+        return "firefox"
     return "chromium-mv2" if manifest_version == 2 else "chromium-mv3"
 
 

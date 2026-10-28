@@ -95,8 +95,8 @@ def test_runtime_findings_scored_outside_static_cap_with_own_cap():
 def test_pick_target():
     assert runner.pick_target("chrome", 3) == "chromium-mv3"
     assert runner.pick_target("edge", 2) == "chromium-mv2"
-    with pytest.raises(runner.DynamicUnavailable):
-        runner.pick_target("firefox", 3)
+    assert runner.pick_target("firefox", 2) == "firefox"
+    assert runner.pick_target("firefox", 3) == "firefox"
 
 
 def test_docker_argv_is_hardened_and_network_off_by_default(tmp_path):
@@ -188,3 +188,14 @@ def test_sandbox_detects_exfiltration_and_clears_benign():
 def test_mv2_sandbox_loads_legacy_extension():
     obs = runner.run_dynamic(FIXTURES / "mv2_ext", manifest_version=2, seconds=15)
     assert obs["background_observed"] and "legacy-c2.evil.test" in obs["external_hosts"]
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _image_available("firefox"), reason="sandbox image not built")
+def test_firefox_sandbox_detects_exfiltration():
+    obs = runner.run_dynamic(FIXTURES / "firefox_ext", manifest_version=2, browser="firefox", seconds=30)
+    assert "ff-c2.evil.test" in obs["external_hosts"]
+    assert {h["canary"] for h in obs["canary_hits"]} >= {"cookie", "password", "email"}
+    assert any(r["source"] == "background_page" for r in obs["requests"])
+    benign = runner.run_dynamic(FIXTURES / "benign_ext", manifest_version=3, browser="firefox", seconds=15)
+    assert benign["canary_hits"] == [] and benign["external_hosts"] == []

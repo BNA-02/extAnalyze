@@ -7,47 +7,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright-core";
-import { findHits, newCanaries } from "./canary.mjs";
+import {
+  ALLOW_NETWORK, DOMAINS, EXT, HTTPS_PORT, HTTP_PORT, SECONDS, canaries, cookieHeader, emit, externalHosts, fail,
+  newResult, note, page, recordRaw,
+} from "./shared.mjs";
 
-const args = Object.fromEntries(
-  process.argv.slice(2).map((a) => a.replace(/^--/, "").split("=", 2)).map(([k, v]) => [k, v ?? "1"]),
-);
-const EXT = args.ext || "/ext";
-const SECONDS = Math.max(10, Math.min(Number(args.seconds || 45), 300));
-const ALLOW_NETWORK = args["allow-network"] === "1";
 const BROWSER_PATH = process.env.BROWSER_PATH;
-const HTTPS_PORT = 8443;
-const HTTP_PORT = 8080;
-const MAX_REQUESTS = 500;
 const DEBUG_PORT = 9223; // loopback inside the container only
-const MAX_NOTES = 50;
-
-// Sites whose content-script match patterns we want to trigger; all resolve to the local server.
-const DOMAINS = [
-  "www.google.com", "accounts.google.com", "mail.google.com", "www.youtube.com", "www.facebook.com",
-  "www.amazon.com", "www.paypal.com", "github.com", "twitter.com", "www.linkedin.com",
-  "login.microsoftonline.com", "www.reddit.com", "www.ebay.com", "www.coinbase.com", "www.bankofamerica.com",
-];
-const LOCAL_HOSTS = new Set([...DOMAINS, "127.0.0.1", "localhost"]);
-
-const canaries = newCanaries();
-const notes = [];
-const note = (m) => notes.length < MAX_NOTES && notes.push(String(m).slice(0, 300));
-const log = (...a) => console.error("[driver]", ...a);
-
-function page(host) {
-  return `<!doctype html><html><head><title>${host}</title></head><body>
-<h1>${host}</h1>
-<form id="login" action="/submit" method="post" onsubmit="return false">
-  <input id="email" name="email" type="email" autocomplete="username">
-  <input id="password" name="password" type="password" autocomplete="current-password">
-  <input id="cc" name="cc" autocomplete="cc-number">
-  <input id="q" name="q" type="search">
-  <button id="submit" type="submit">Sign in</button>
-</form>
-<script>localStorage.setItem("auth_token", ${JSON.stringify(canaries.storage)});</script>
-</body></html>`;
-}
+let bgTargets = 0;
 
 function startServers() {
   const handler = (req, res) => {
@@ -59,7 +26,7 @@ function startServers() {
     }
     res.writeHead(200, {
       "content-type": "text/html",
-      "set-cookie": [`session=${canaries.cookie}; Path=/`],
+      "set-cookie": [cookieHeader()],
     });
     res.end(page(host));
   };
@@ -68,45 +35,11 @@ function startServers() {
   http.createServer(handler).listen(HTTP_PORT, "127.0.0.1");
 }
 
-const requests = [];
-const hits = [];
-const externalHosts = new Set();
-let bgTargets = 0;
-
 function record(req) {
   recordRaw({
     url: req.url(), method: req.method(), postData: req.postData() ?? "", headers: req.headers(),
     resourceType: req.resourceType(), source: req.serviceWorker() ? "service_worker" : "page",
   });
-}
-
-function recordRaw(r) {
-  const req = {
-    url: () => r.url, method: () => r.method, postData: () => r.postData, headers: () => r.headers,
-    resourceType: () => r.resourceType, source: r.source,
-  };
-  let url;
-  try { url = new URL(req.url()); } catch { return; }
-  if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) return;
-  const external = !LOCAL_HOSTS.has(url.hostname);
-  if (!external) return;
-  externalHosts.add(url.hostname);
-  const body = req.postData() ?? "";
-  const headers = JSON.stringify(req.headers());
-  const found = findHits(`${req.url()}\n${headers}\n${body}`, canaries);
-  for (const h of found) {
-    hits.push({ canary: h.canary, encoding: h.encoding, url: req.url().slice(0, 300), method: req.method() });
-  }
-  if (requests.length < MAX_REQUESTS) {
-    requests.push({
-      url: req.url().slice(0, 300),
-      method: req.method(),
-      resource_type: req.resourceType(),
-      source: req.source,
-      body_bytes: Buffer.byteLength(body),
-      canaries: found.map((h) => h.canary),
-    });
-  }
 }
 
 // Network events from MV2 background pages, via the browser-level DevTools websocket.
@@ -175,17 +108,9 @@ async function interact(p, host) {
 async function main() {
   const started = Date.now();
   startServers();
-  const result = {
-    schema: 1, background_observed: false, browser: BROWSER_PATH ? path.basename(path.dirname(BROWSER_PATH)) : null,
-    extension_id: null, pages_visited: [], requests, external_hosts: [], canary_hits: hits,
-    console_errors: [], notes, duration_s: 0,
-  };
-  const emit = () => {
-    result.external_hosts = [...externalHosts].sort();
-    result.duration_s = Math.round((Date.now() - started) / 100) / 10;
-    process.stdout.write(JSON.stringify(result) + "\n");
-  };
-  const deadline = setTimeout(() => { note("overall deadline reached"); emit(); process.exit(0); }, SECONDS * 1000 + 15000);
+  const result = newResult(BROWSER_PATH ? path.basename(path.dirname(BROWSER_PATH)) : null);
+  const done = () => emit(result, started);
+  const deadline = setTimeout(() => { note("overall deadline reached"); done(); process.exit(0); }, SECONDS * 1000 + 15000);
 
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), "profile-"));
   const rules = DOMAINS.map((d) => `MAP ${d} 127.0.0.1`).join(", ");
@@ -232,11 +157,8 @@ async function main() {
   }
   await context.close().catch(() => {});
   clearTimeout(deadline);
-  emit();
+  done();
   process.exit(0);
 }
 
-main().catch((e) => {
-  process.stdout.write(JSON.stringify({ schema: 1, error: String(e.message || e).slice(0, 500) }) + "\n");
-  process.exit(0);
-});
+main().catch(fail);

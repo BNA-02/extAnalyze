@@ -3,7 +3,7 @@
 #   chromium-mv3  current Chrome for Testing (Manifest V3 extensions)
 #   chromium-mv2  Chrome for Testing 126, the last line where Manifest V2 extensions load without
 #                 flags or policy (current Chromium no longer loads them)
-#   firefox       see Dockerfile.firefox
+#   firefox       current Firefox (Mozilla release tarball) driven through geckodriver
 #
 # Runtime base: Red Hat Hardened Images (Hummingbird), a minimal, non-root, no-package-manager
 # image. Red Hat publishes no browser images, so Chrome is added from Google's pinned, checksummed
@@ -54,13 +54,39 @@ RUN mkdir -p /opt/browserlibs \
     && cp -L /usr/lib64/libsoftokn3.so /usr/lib64/libfreebl3.so /usr/lib64/libfreeblpriv3.so \
              /usr/lib64/libnssckbi.so /usr/lib64/libnssdbm3.so /opt/browserlibs/ 2>/dev/null || true
 
+# ── Firefox + geckodriver (pinned by version and SHA-256) ─────────────────────────────────────
+FROM libs AS firefox-build
+RUN dnf -y install --setopt=install_weak_deps=False xz gtk3 dbus-glib libXt libXcursor libXinerama \
+      mesa-libEGL libXcomposite libXdamage && dnf clean all
+ARG FIREFOX_VERSION=159.0
+ARG FIREFOX_SHA256=54536fcd120af484d4c56272a5a1cf4af57b9c713d1a3b1e775da192dd541fcd
+ARG GECKODRIVER_VERSION=0.37.1
+ARG GECKODRIVER_SHA256=e815130ea95983e162ae91843b48d3a3ce991735635fce83a647afde21e09f7e
+RUN curl -fsSLo /tmp/ff.tar.xz \
+      "https://archive.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.tar.xz" \
+    && echo "${FIREFOX_SHA256}  /tmp/ff.tar.xz" | sha256sum -c - \
+    && tar -xJf /tmp/ff.tar.xz -C /opt \
+    && curl -fsSLo /tmp/gd.tgz \
+      "https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER_VERSION}/geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz" \
+    && echo "${GECKODRIVER_SHA256}  /tmp/gd.tgz" | sha256sum -c - \
+    && tar -xzf /tmp/gd.tgz -C /opt
+RUN mkdir -p /opt/browserlibs \
+    && for f in /opt/firefox/firefox /opt/firefox/*.so; do ldd "$f" 2>/dev/null; done \
+       | awk '/=> \//{print $3}' | sort -u \
+       | grep -Ev '^/opt/firefox/|/(libc|libm|libpthread|libdl|librt|libresolv|libutil)\.so' \
+       | xargs -r -I{} cp -L {} /opt/browserlibs/ \
+    && cp -L /usr/lib64/libsoftokn3.so /usr/lib64/libfreebl3.so /usr/lib64/libfreeblpriv3.so \
+             /usr/lib64/libnssckbi.so /usr/lib64/libnssdbm3.so /opt/browserlibs/ 2>/dev/null || true \
+    && cp -rL /usr/share/glib-2.0 /opt/glib-2.0 2>/dev/null || true
+RUN (for f in /opt/firefox/firefox /opt/firefox/*.so; do ldd "$f" 2>&1 | grep "not found"; done) || true
+
 # ── driver dependencies ───────────────────────────────────────────────────────────────────────
 FROM ${BASE} AS driver
 USER 0
 WORKDIR /opt/sandbox
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
-COPY driver.mjs canary.mjs ./
+COPY driver.mjs driver-firefox.mjs shared.mjs canary.mjs ./
 
 # ── final images ──────────────────────────────────────────────────────────────────────────────
 FROM ${BASE} AS runtime-base
@@ -81,3 +107,10 @@ FROM runtime-base AS chromium-mv2
 COPY --from=chrome-mv2 /opt/chrome-linux64 /opt/chrome-linux64
 COPY --from=chrome-mv2 /opt/browserlibs /opt/browserlibs
 ENV BROWSER_PATH=/opt/chrome-linux64/chrome MV2=1
+
+FROM runtime-base AS firefox
+COPY --from=firefox-build /opt/firefox /opt/firefox
+COPY --from=firefox-build /opt/geckodriver /opt/geckodriver
+COPY --from=firefox-build /opt/browserlibs /opt/browserlibs
+ENV BROWSER_PATH=/opt/firefox/firefox GECKODRIVER=/opt/geckodriver MOZ_HEADLESS=1 MOZ_DISABLE_CONTENT_SANDBOX=1
+ENTRYPOINT ["node", "/opt/sandbox/driver-firefox.mjs"]
