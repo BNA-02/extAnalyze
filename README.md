@@ -7,8 +7,6 @@ executing them. It downloads the CRX/XPI, parses the manifest, scores every
 permission, detects dangerous combinations, and cross-references three threat
 intelligence databases.
 
----
-
 ## Table of Contents
 
 - [Features](#features)
@@ -23,8 +21,6 @@ intelligence databases.
 - [Code review](#code-review)
 - [Limitations](#limitations)
 - [License](#license)
-
----
 
 ## Features
 
@@ -54,8 +50,6 @@ intelligence databases.
 **Output**
 - JSON (`--output json`) for CI/pipeline integration
 - Bulk mode: `--file ids.txt` with multithreaded analysis
-
----
 
 ## Installation
 
@@ -94,8 +88,6 @@ uv pip install .
 
 Python 3.10+ required.
 
----
-
 ## Usage
 
 ```bash
@@ -131,8 +123,6 @@ bmnlcjabgnpnenekpadlanbbkooimhnj
 uBlock0@raymondhill.net
 ```
 
----
-
 ## Risk Scoring
 
 | Verdict  | Score  |
@@ -145,8 +135,6 @@ uBlock0@raymondhill.net
 
 Score sources: TI database hits (short-circuit to minimum HIGH on confirmed malicious),
 permission risk scores, dangerous combo points, unexpected permissions for category.
-
----
 
 ## Permission Taxonomy
 
@@ -169,8 +157,6 @@ Selected CRITICAL entries:
 | `nativeMessaging` | 9 | Full browser sandbox escape to host OS |
 | `vpnProvider` | 9 | Route all device traffic through attacker infrastructure (ChromeOS) |
 
----
-
 ## Dangerous Combo Detection
 
 28 rules fire when specific permission combinations appear together.
@@ -187,8 +173,6 @@ Examples:
 | COMBO_027 | DNS Tunnel Exfiltration | HIGH |
 | COMBO_019 | Evidence Destruction (browsingData) | HIGH |
 
----
-
 ## Threat Intelligence Sources
 
 | Source | Type | Update |
@@ -201,13 +185,9 @@ Examples:
 
 Cache lives at `~/.extanalyze/cache/`.
 
----
-
 ## Contributing
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, tests, linting, security scans and CI.
-
----
 
 ## Project Layout
 
@@ -248,8 +228,6 @@ tests/
 .github/workflows/ci.yml
 ```
 
----
-
 ## Code review
 
 After extraction, `extanalyze/analysis/code_review.py` statically scans the extension's JS and HTML (never executing it) with about 45 rules:
@@ -274,8 +252,6 @@ Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIG
 - **RetireJS**: known-vulnerable bundled JavaScript libraries
 - **VirusTotal**: domain reputation lookups when `VIRUSTOTAL_API_KEY` is set. Domains found in the extension are sent to VirusTotal.
 
----
-
 ## Limitations
 
 - **Mostly regex-based code review**: the default scan has no AST (only `--deep` does, within a single file); obfuscated or split-up code can evade it
@@ -284,8 +260,6 @@ Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIG
 - **CWS JSON API**: undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend
 - **Permission necessity mapping**: rule-based heuristics per category, not semantic reasoning
 - **No Firefox built-in registry**: Firefox built-in extensions not enumerated
-
----
 
 ## License
 
