@@ -166,7 +166,7 @@ class TestOwnershipTransfer:
 
 class TestUnexpectedPermissions:
     def test_unexpected_perms_add_score(self):
-        # nativeMessaging is UNEXPECTED for ad_blocker — should generate a reason
+        # nativeMessaging is UNEXPECTED for ad_blocker - should generate a reason
         m = _make_manifest(permissions=["nativeMessaging"])
         pa = analyze(m, category="ad_blocker", category_confidence="HIGH")
         report = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), pa)

@@ -8,8 +8,12 @@ uv sync --extra dev
 uv run ruff check extanalyze/
 uv run ruff format extanalyze/
 
-# Tests (unit tests, no network)
+# Tests (unit tests, no network; sandbox integration tests are skipped without images)
 uv run pytest tests/ -v
+
+# Sandbox integration tests (needs Docker)
+uv run extanalyze dynamic build   # needs the plugin installed: uv pip install ./plugins/dynamic
+uv run pytest -m integration -v
 
 # SAST
 uv run bandit -r extanalyze/ -ll -ii -c pyproject.toml

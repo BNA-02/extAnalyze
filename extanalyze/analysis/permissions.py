@@ -99,13 +99,13 @@ def analyze(
 
     has_all_urls = "<all_urls>" in host_perms or "<all_urls>" in all_perms
 
-    # Score each NAMED permission only — no URL patterns here
+    # Score each NAMED permission only - no URL patterns here
     perm_entries: list[PermissionEntry] = []
     for perm in sorted(named_perms):
         entry = _score_permission(perm, manifest.manifest_version, is_host=False)
         perm_entries.append(entry)
 
-    # Host permissions are stored separately — NOT added to perm_entries
+    # Host permissions are stored separately - NOT added to perm_entries
     # They appear in pa.host_permissions and are rendered in their own section
     # by the reporter, with host scope assessment logic
 
@@ -116,7 +116,7 @@ def analyze(
     # Detect manifest signals for combo matching
     manifest_signals = _collect_signals(manifest)
 
-    # Combo detection — pass manifest so signals can include contextual values
+    # Combo detection - pass manifest so signals can include contextual values
     combo_hits = _detect_combos(all_perms, manifest.manifest_version, manifest_signals, manifest)
 
     # Host scope assessment

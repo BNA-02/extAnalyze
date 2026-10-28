@@ -39,8 +39,8 @@ dev = [
     "pytest-mock>=3.12",
     "pytest-cov>=5.0",
     "responses>=0.25",
-    "ruff==0.16.9",
-    "bandit[toml]>=1.8.3,<1.9",
+    "ruff==0.17.1",
+    "bandit[toml]>=1.8.3,<1.10",
     "pip-audit>=2.7.3",
     "guarddog>=3.2.0",
     "build>=1.2",
@@ -96,6 +96,7 @@ skips = ["B101", "B311"]
 # ── pytest ───────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["plugins/dynamic"]
 addopts = "--tb=short -q"
 markers = [
     "unit: pure unit tests, no network or disk I/O",

@@ -7,8 +7,6 @@ executing them. It downloads the CRX/XPI, parses the manifest, scores every
 permission, detects dangerous combinations, and cross-references three threat
 intelligence databases.
 
----
-
 ## Table of Contents
 
 - [Features](#features)
@@ -23,8 +21,6 @@ intelligence databases.
 - [Code review](#code-review)
 - [Limitations](#limitations)
 - [License](#license)
-
----
 
 ## Features
 
@@ -55,9 +51,18 @@ intelligence databases.
 - JSON (`--output json`) for CI/pipeline integration
 - Bulk mode: `--file ids.txt` with multithreaded analysis
 
----
-
 ## Installation
+
+Debian, Ubuntu, Kali (self-contained `.deb`, bundles its own Python under `/opt/extanalyze`):
+
+```bash
+# Download the .deb and SHA256SUMS from the latest GitHub Release, then:
+sha256sum -c --ignore-missing SHA256SUMS
+sudo apt install ./extanalyze_*_amd64.deb
+extanalyze --version
+```
+
+Build it yourself with `packaging/build-deb.sh` (needs `uv` and `dpkg-deb`). A signed apt repository is planned.
 
 From a clone (pip):
 
@@ -83,26 +88,24 @@ uv pip install .
 
 Python 3.10+ required.
 
----
-
 ## Usage
 
 ```bash
 # Single extension - auto-detect browser
-extanalyze analyze cjpalhdlnbpafiamejdnhcphjbkeiagm
+extanalyze cjpalhdlnbpafiamejdnhcphjbkeiagm
 
 # Force browser
-extanalyze analyze cjpalhdlnbpafiamejdnhcphjbkeiagm --browser chrome
-extanalyze analyze amnbcmdbanbkjhnfoeceemmmdiepnbpp --browser edge
-extanalyze analyze uBlock0@raymondhill.net --browser firefox
+extanalyze cjpalhdlnbpafiamejdnhcphjbkeiagm --browser chrome
+extanalyze amnbcmdbanbkjhnfoeceemmmdiepnbpp --browser edge
+extanalyze uBlock0@raymondhill.net --browser firefox
 
 # Bulk analysis from file
-extanalyze analyze --file ids.txt
-extanalyze analyze --file ids.txt --browser edge
+extanalyze --file ids.txt
+extanalyze --file ids.txt --browser edge
 
 # JSON output
-extanalyze analyze <id> --output json
-extanalyze analyze --file ids.txt --output json > results.json
+extanalyze <id> --output json
+extanalyze --file ids.txt --output json > results.json
 
 # Cache management
 extanalyze cache status
@@ -120,8 +123,6 @@ bmnlcjabgnpnenekpadlanbbkooimhnj
 uBlock0@raymondhill.net
 ```
 
----
-
 ## Risk Scoring
 
 | Verdict  | Score  |
@@ -134,8 +135,6 @@ uBlock0@raymondhill.net
 
 Score sources: TI database hits (short-circuit to minimum HIGH on confirmed malicious),
 permission risk scores, dangerous combo points, unexpected permissions for category.
-
----
 
 ## Permission Taxonomy
 
@@ -158,8 +157,6 @@ Selected CRITICAL entries:
 | `nativeMessaging` | 9 | Full browser sandbox escape to host OS |
 | `vpnProvider` | 9 | Route all device traffic through attacker infrastructure (ChromeOS) |
 
----
-
 ## Dangerous Combo Detection
 
 28 rules fire when specific permission combinations appear together.
@@ -176,8 +173,6 @@ Examples:
 | COMBO_027 | DNS Tunnel Exfiltration | HIGH |
 | COMBO_019 | Evidence Destruction (browsingData) | HIGH |
 
----
-
 ## Threat Intelligence Sources
 
 | Source | Type | Update |
@@ -192,11 +187,27 @@ Cache lives at `~/.extanalyze/cache/`.
 
 ---
 
+## Dynamic analysis (`--dynamic`)
+
+Static analysis never runs the extension. `--dynamic` additionally **executes it inside a disposable Docker sandbox** and observes what it does. It ships as an optional plugin so the core CLI stays light:
+
+```bash
+pip install "git+https://github.com/BNA-02/extAnalyze.git#subdirectory=plugins/dynamic"   # included in the .deb
+extanalyze dynamic pull            # download the sandbox images (or: extanalyze dynamic build)
+extanalyze <id> --dynamic          # add --dynamic-seconds N, --dynamic-network
+```
+
+- **What it does:** loads the extension in headless Chromium, browses local test pages that impersonate popular sites (login and card forms, cookies and localStorage seeded with unique canary values), and records every external request. If a canary value shows up in an outbound request (raw, URL-encoded, base64, hex), that is confirmed exfiltration (`CR-RT-001`, CRITICAL).
+- **Images:** `chromium-mv3` (current Chrome for Testing) and `chromium-mv2` (Chrome for Testing 126, the last line that loads Manifest V2 extensions). Built on Red Hat Hardened Images (`registry.access.redhat.com/hi/nodejs`, non-root, no package manager), browsers pinned by version and SHA-256.
+- **Isolation:** no network by default (attempts are still observed, nothing leaves), read-only filesystem, all capabilities dropped, no-new-privileges, pid/memory/cpu limits, extension mounted read-only, host-side timeout. `--dynamic-network` lets it reach the real internet; use it only on a machine you are willing to expose.
+- **Scoring:** runtime-confirmed findings (`CR-RT-*`) are scored outside the static cap, with their own cap.
+- **Limits:** Chromium only for now (Firefox is planned); evasive extensions (sleep timers, geo or user-agent checks, delayed activation) may not trigger; not exhaustive. A container is a strong boundary, not a perfect one: keep Docker up to date.
+
+---
+
 ## Contributing
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, tests, linting, security scans and CI.
-
----
 
 ## Project Layout
 
@@ -237,8 +248,6 @@ tests/
 .github/workflows/ci.yml
 ```
 
----
-
 ## Code review
 
 After extraction, `extanalyze/analysis/code_review.py` statically scans the extension's JS and HTML (never executing it) with about 45 rules:
@@ -263,8 +272,6 @@ Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIG
 - **RetireJS**: known-vulnerable bundled JavaScript libraries
 - **VirusTotal**: domain reputation lookups when `VIRUSTOTAL_API_KEY` is set. Domains found in the extension are sent to VirusTotal.
 
----
-
 ## Limitations
 
 - **Mostly regex-based code review**: the default scan has no AST (only `--deep` does, within a single file); obfuscated or split-up code can evade it
@@ -273,8 +280,6 @@ Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIG
 - **CWS JSON API**: undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend
 - **Permission necessity mapping**: rule-based heuristics per category, not semantic reasoning
 - **No Firefox built-in registry**: Firefox built-in extensions not enumerated
-
----
 
 ## License
 

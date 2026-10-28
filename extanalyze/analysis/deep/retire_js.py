@@ -1,5 +1,5 @@
 """
-retire_js.py — Detect known-vulnerable JavaScript libraries bundled in the extension.
+retire_js.py - Detect known-vulnerable JavaScript libraries bundled in the extension.
 
 Port of the Retire.js detection logic from ExtAnalysis.
 Uses the retire.js vulnerability database fetched from GitHub on first run, cached locally.

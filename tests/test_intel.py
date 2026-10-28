@@ -1,6 +1,6 @@
 """
 Unit tests: intel/tpci.py and intel/sentry.py
-Uses responses library to mock HTTP calls — no real network I/O.
+Uses responses library to mock HTTP calls - no real network I/O.
 """
 import json
 import csv

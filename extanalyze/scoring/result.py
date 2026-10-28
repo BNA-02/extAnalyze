@@ -1,5 +1,5 @@
 """
-Full analysis result dataclass — passed between all layers and reporters.
+Full analysis result dataclass - passed between all layers and reporters.
 """
 
 from __future__ import annotations
@@ -49,3 +49,4 @@ class AnalysisResult:
     is_builtin: bool = False  # True for extensions baked into the browser
     code_review: CodeReviewResult | None = None  # None if extraction/review did not run
     code_review_error: str = ""  # non-empty if the code review step failed
+    dynamic_error: str = ""  # non-empty if the dynamic (sandbox) step failed

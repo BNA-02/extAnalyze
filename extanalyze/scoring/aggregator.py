@@ -32,6 +32,13 @@ PERM_POINTS = {"CRITICAL": 8, "HIGH": 5, "MEDIUM": 2, "LOW": 0}
 CODE_POINTS = {"CRITICAL": 15, "HIGH": 6, "MEDIUM": 2, "LOW": 0}
 EXFIL_FLOW_POINTS = 10
 CODE_REVIEW_CAP = 40
+DYNAMIC_CAP = 40  # runtime-confirmed (CR-RT-*) findings, scored outside the static cap
+RT_POINTS = {
+    "CRITICAL": 40,
+    "HIGH": 10,
+    "MEDIUM": 5,
+    "LOW": 0,
+}  # confirmed exfiltration alone hits the cap
 
 # Thresholds
 THRESHOLDS = [
@@ -134,7 +141,7 @@ def aggregate(
         elif source == "firefox-amo":
             reasons.append("Firefox AMO: extension no longer available (disabled or removed)")
         elif source in ("builtin", ""):
-            pass  # builtin or unknown — no meaningful removal signal
+            pass  # builtin or unknown - no meaningful removal signal
         else:
             reasons.append(
                 "Google CRX API: status=noupdate — extension likely removed from CWS "
@@ -152,7 +159,7 @@ def aggregate(
         pts = PERM_POINTS.get(perm_entry.sensitivity, 0)
         score += pts
 
-    # <all_urls> host permission — only add points if NOT already scored as a named permission
+    # <all_urls> host permission - only add points if NOT already scored as a named permission
     # (avoids double-counting when <all_urls> is both normalized into host_permissions
     # and scored as a PermissionEntry)
     all_urls_in_named = any(p.name == "<all_urls>" for p in perm_analysis.permissions)
@@ -177,7 +184,12 @@ def aggregate(
     # ── Code review (heuristic: capped so minified libraries can't dominate) ─
     if code_review is not None:
         cr_points = 0
+        rt_points = 0
         for f in code_review.findings:
+            if f.rule_id.startswith("CR-RT-"):
+                rt_points += RT_POINTS.get(f.severity, 0)
+                reasons.append(f"[{f.rule_id}] {f.name}: {f.description}")
+                continue
             if f.rule_id == "CR-DEEP-VT":
                 # External reputation signal: scored outside the code-review cap
                 score += CODE_POINTS.get(f.severity, 0)
@@ -192,7 +204,7 @@ def aggregate(
                 f"Possible data exfiltration flow: {flow_file} reads sensitive data "
                 "and has an outbound network channel"
             )
-        score += min(cr_points, CODE_REVIEW_CAP)
+        score += min(cr_points, CODE_REVIEW_CAP) + min(rt_points, DYNAMIC_CAP)
 
     # ── Shortcircuit: TI confirmed -> minimum HIGH ───────────────────────
     if ti_confirmed and score < 41:

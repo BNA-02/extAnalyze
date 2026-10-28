@@ -70,7 +70,7 @@ def probe_stores(ext_id: str, timeout: int = 8) -> list[str]:
     Probe Chrome and Edge stores to determine where a 32-char CRX ID is listed.
 
     Uses the Google CRX update API (fast, definitive for Chrome) and the Edge
-    product API (equally fast) in parallel via a simple sequential check — both
+    product API (equally fast) in parallel via a simple sequential check - both
     are sub-second responses.
 
     Returns a list of browser strings: ["chrome"], ["edge"], ["chrome", "edge"],
@@ -84,7 +84,7 @@ def probe_stores(ext_id: str, timeout: int = 8) -> list[str]:
     """
     browsers: list[str] = []
 
-    # Check Chrome (Google CRX API — fastest, most reliable)
+    # Check Chrome (Google CRX API - fastest, most reliable)
     crx_url = _CRX_LIVENESS_URL.format(ext_id=ext_id)
     try:
         resp = get_limited(crx_url, headers=_HEADERS, timeout=timeout)
@@ -118,7 +118,7 @@ def fetch_edge_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
 
     The Edge product API returns: name, developer, category, activeInstallCount,
     averageRating, version, and the full manifest JSON. It is the authoritative
-    source for Edge extensions — never query CWS for Edge IDs.
+    source for Edge extensions - never query CWS for Edge IDs.
 
     Also returns 'isBadgedAsFeatured' (established) and publisher metadata.
     """
@@ -181,7 +181,7 @@ def fetch_cws_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
     Fetch Chrome Web Store metadata via the internal batchexecute JSON API.
 
     Uses the xY2Ddd RPC endpoint that the CWS frontend itself calls, returning
-    a structured JSON array — no HTML scraping, no regex fragility.
+    a structured JSON array - no HTML scraping, no regex fragility.
 
     Response schema (data[0] is the main extension record):
       data[0][0]  str   extension ID
@@ -359,7 +359,7 @@ def fetch_amo_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
     promoted = data.get("promoted") or []
     promoted_cats = [p.get("category", "") for p in promoted] if isinstance(promoted, list) else []
     verified = "recommended" in promoted_cats
-    # 'line' = curated/featured by AMO staff — closest to 'established'
+    # 'line' = curated/featured by AMO staff - closest to 'established'
     established = "line" in promoted_cats or "featured" in promoted_cats
 
     return StoreMeta(

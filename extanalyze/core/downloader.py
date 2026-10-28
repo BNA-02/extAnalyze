@@ -15,7 +15,7 @@ import requests
 
 from .http import get_limited
 
-# Chrome/Edge CWS download endpoint (Chrome only — returns 404 for Edge-only IDs)
+# Chrome/Edge CWS download endpoint (Chrome only - returns 404 for Edge-only IDs)
 _CWS_DOWNLOAD_URL = (
     "https://clients2.google.com/service/update2/crx"
     "?response=redirect"
@@ -24,7 +24,7 @@ _CWS_DOWNLOAD_URL = (
     "&x=id%3D{ext_id}%26installsource%3Dondemand%26uc"
 )
 
-# Edge Add-ons download endpoint — works for all Edge extensions including Edge-only ones
+# Edge Add-ons download endpoint - works for all Edge extensions including Edge-only ones
 _EDGE_DOWNLOAD_URL = (
     "https://edge.microsoft.com/extensionwebstorebase/v1/crx"
     "?response=redirect"
@@ -186,7 +186,7 @@ def download(ext_id: str, browser: str, timeout: int = 30) -> DownloadResult:
         crx_format, zip_offset = _detect_crx_format(data)
 
     elif browser == "edge":
-        # Edge has its own CDN — CWS returns 404 for Edge-only extension IDs
+        # Edge has its own CDN - CWS returns 404 for Edge-only extension IDs
         url = _EDGE_DOWNLOAD_URL.format(ext_id=ext_id)
         data = _download_bytes(url, timeout=timeout)
         sha = _sha256(data)
