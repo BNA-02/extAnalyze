@@ -1,6 +1,8 @@
 # Runtime dependencies only — used by pip-audit in CI.
 # Do NOT include pip, setuptools, dev tools, or the extanalyze package itself.
 # Keep in sync with [project.dependencies] in pyproject.toml.
+# Hash-pinned lock (incl. transitive deps) is requirements.lock. Regenerate with:
+#   uv pip compile requirements.txt --universal --python-version 3.10 --generate-hashes -o requirements.lock
 click>=8.1
 requests>=2.31
 rich>=13.0

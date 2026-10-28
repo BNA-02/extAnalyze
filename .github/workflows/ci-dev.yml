@@ -123,7 +123,7 @@ jobs:
       - name: pip-audit — known CVEs
         run: |
           pip-audit \
-            --requirement requirements.txt \
+            --requirement requirements.lock \
             --format markdown \
             --output pip-audit-results.md
 
