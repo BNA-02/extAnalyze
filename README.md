@@ -185,8 +185,6 @@ Examples:
 
 Cache lives at `~/.extanalyze/cache/`.
 
----
-
 ## Dynamic analysis (`--dynamic`)
 
 Static analysis never runs the extension. `--dynamic` additionally **executes it inside a disposable Docker sandbox** and observes what it does. It ships as an optional plugin so the core CLI stays light:
@@ -202,8 +200,6 @@ extanalyze <id> --dynamic          # add --dynamic-seconds N, --dynamic-network
 - **Isolation:** no network by default (attempts are still observed, nothing leaves), read-only filesystem, all capabilities dropped, no-new-privileges, pid/memory/cpu limits, extension mounted read-only, host-side timeout. `--dynamic-network` lets it reach the real internet; use it only on a machine you are willing to expose.
 - **Scoring:** runtime-confirmed findings (`CR-RT-*`) are scored outside the static cap, with their own cap.
 - **Limits:** Chromium only for now (Firefox is planned); evasive extensions (sleep timers, geo or user-agent checks, delayed activation) may not trigger; not exhaustive. A container is a strong boundary, not a perfect one: keep Docker up to date.
-
----
 
 ## Contributing
 
