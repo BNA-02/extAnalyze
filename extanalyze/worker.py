@@ -14,11 +14,12 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
 from .analysis.categorizer import categorize
+from .analysis.code_review import review_directory
 from .analysis.deep import run_deep_analysis
 from .analysis.permissions import analyze as analyze_permissions
 from .core.downloader import ExtensionNotDownloadableError, download
 from .core.enrichment import enrich
-from .core.extractor import ExtractionError, extract
+from .core.extractor import ExtractionError, cleanup_extraction, extract
 from .core.ingestion import ExtensionInput
 from .core.manifest_parser import parse_manifest
 from .core.store_meta import (
@@ -204,6 +205,10 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
     download_sha256 = ""
     download_size = 0
     crx_format = ""
+    dl = None
+    extract_result = None
+    code_review = None
+    code_review_error = ""
 
     if is_builtin:
         # Builtin extensions are baked into the browser binary — no CRX to download.
@@ -251,6 +256,12 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
                 except Exception as e:
                     manifest_error = str(e)
 
+                # ── Step 8b: Static code review (never executes extension code) ──
+                try:
+                    code_review = review_directory(extract_result.tmp_dir, extract_result.files)
+                except Exception as e:
+                    code_review_error = str(e)
+
             except ExtractionError as e:
                 download_error = f"Extraction failed: {e}"
 
@@ -258,6 +269,11 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
             download_error = str(e)
         except Exception as e:
             download_error = f"Unexpected download error: {e}"
+        finally:
+            if extract_result is not None:
+                cleanup_extraction(extract_result.tmp_dir)
+            if dl is not None:
+                dl.path.unlink(missing_ok=True)
 
     # ── Step 9: Risk scoring ──────────────────────────────────────────────
     # Create minimal objects for scoring if analysis failed
@@ -278,7 +294,14 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
             category_confidence="UNKNOWN",
         )
 
-    risk = aggregate(tpci_result, sentry_result, liveness, perm_analysis, deep_result=deep_result)
+    risk = aggregate(
+        tpci_result,
+        sentry_result,
+        liveness,
+        perm_analysis,
+        deep_result=deep_result,
+        code_review=code_review,
+    )
 
     return AnalysisResult(
         ext_id=ext_id,
@@ -299,6 +322,8 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
         download_error=download_error,
         manifest_error=manifest_error,
         is_builtin=is_builtin,
+        code_review=code_review,
+        code_review_error=code_review_error,
     )
 
 

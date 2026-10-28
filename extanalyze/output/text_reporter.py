@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from rich import box
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -123,6 +124,7 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
         _print_permissions(console, result)
         _print_combos(console, result)
         _print_necessity(console, result)
+        _print_code_review(console, result)
     elif not result.is_builtin and (result.download_error or result.manifest_error):
         reason = result.download_error or result.manifest_error
         console.print(f"\n[dim]Static analysis skipped — {reason}[/dim]")
@@ -313,6 +315,40 @@ def _print_combos(console: Console, result: AnalysisResult) -> None:
         console.print(f"    Matched: {', '.join(combo.matched_permissions)}")
         if combo.mv_note:
             console.print(f"    MV Note: [dim]{combo.mv_note}[/dim]")
+
+
+def _print_code_review(console: Console, result: AnalysisResult) -> None:
+    if result.code_review_error:
+        console.print(f"\n[red][!] Code review failed:[/red] {escape(result.code_review_error)}")
+    cr = result.code_review
+    if cr is None:
+        return
+    console.print(
+        f"\n[bold underline]Code Review[/bold underline]  "
+        f"({cr.files_scanned} files scanned, {len(cr.findings)} indicator(s))  "
+        "[dim]heuristic leads, not verdicts[/dim]"
+    )
+    if not cr.findings:
+        console.print("  [green]No suspicious code patterns detected.[/green]")
+    for f in cr.findings:
+        color = _SEVERITY_COLORS.get(f.severity, "white")
+        console.print(f"\n  [{color}][{f.rule_id}] {f.name}  [{f.severity}][/{color}]  x{f.count}")
+        console.print(f"    {escape(f.description)}")
+        for loc in f.locations:
+            console.print(f"    [dim]{escape(loc.file)}:{loc.line}  {escape(loc.snippet)}[/dim]")
+    for flow in cr.exfil_flows:
+        console.print(
+            f"\n  [bold red]Possible exfiltration flow[/bold red]: {escape(flow)} "
+            "reads sensitive data and has an outbound channel"
+        )
+    if cr.external_domains:
+        shown = ", ".join(escape(d) for d in cr.external_domains[:15])
+        more = len(cr.external_domains) - 15
+        console.print(
+            f"\n  External domains referenced: {shown}" + (f" (+{more} more)" if more > 0 else "")
+        )
+    if cr.files_skipped:
+        console.print(f"  [yellow]{len(cr.files_skipped)} file(s) skipped (size limits)[/yellow]")
 
 
 def _print_necessity(console: Console, result: AnalysisResult) -> None:

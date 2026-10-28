@@ -163,6 +163,7 @@ def _render_single(r: AnalysisResult) -> str:
 
     <div class="card">{perms_html}</div>
     <div class="card">{combos_html}</div>
+    <div class="card">{_code_review_html(r)}</div>
     <div class="card">{reasons_html}</div>
 
     <div style="color:#6b7280;font-size:12px;margin-top:24px;text-align:center">
@@ -257,6 +258,48 @@ def _render_bulk(results: list[AnalysisResult]) -> str:
   </script>
 </body>
 </html>"""
+
+
+def _code_review_html(r: AnalysisResult) -> str:
+    cr = r.code_review
+    if cr is None:
+        return ""
+    h2 = '<h2 style="color:#f3f4f6;border-bottom:1px solid #374151;padding-bottom:8px">Code Review</h2>'
+    note = (
+        f'<div style="font-size:12px;color:#9ca3af">{cr.files_scanned} files scanned · '
+        "heuristic leads, not verdicts</div>"
+    )
+    items = []
+    for f in cr.findings:
+        cs, _ = _RISK_BADGE.get(f.severity, ("background:#6b7280;color:#fff", f.severity))
+        locs = "".join(
+            f'<div style="font-family:monospace;font-size:11px;color:#9ca3af">'
+            f"{html.escape(loc.file)}:{loc.line}  {html.escape(loc.snippet)}</div>"
+            for loc in f.locations
+        )
+        items.append(
+            f'<div style="background:#1f2937;margin:8px 0;padding:10px 14px;border-radius:6px">'
+            f'<span style="padding:2px 8px;border-radius:3px;{cs}">{html.escape(f.severity)}</span> '
+            f"<strong>[{html.escape(f.rule_id)}] {html.escape(f.name)}</strong> ×{f.count}"
+            f'<div style="font-size:13px;color:#d1d5db;margin-top:4px">{html.escape(f.description)}</div>'
+            f"{locs}</div>"
+        )
+    flows = "".join(
+        f'<div style="color:#f87171;margin:6px 0">Possible exfiltration flow: {html.escape(x)} '
+        "reads sensitive data and has an outbound channel</div>"
+        for x in cr.exfil_flows
+    )
+    domains = ""
+    if cr.external_domains:
+        domains = (
+            '<div style="font-size:12px;color:#9ca3af;margin-top:8px">External domains: '
+            + html.escape(", ".join(cr.external_domains[:30]))
+            + "</div>"
+        )
+    empty = (
+        "" if items else '<div style="color:#34d399">No suspicious code patterns detected.</div>'
+    )
+    return h2 + note + empty + "".join(items) + flows + domains
 
 
 def _trust_html(store) -> str:

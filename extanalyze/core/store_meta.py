@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import requests
 
+from .http import get_limited
+
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -85,7 +87,7 @@ def probe_stores(ext_id: str, timeout: int = 8) -> list[str]:
     # Check Chrome (Google CRX API — fastest, most reliable)
     crx_url = _CRX_LIVENESS_URL.format(ext_id=ext_id)
     try:
-        resp = requests.get(crx_url, headers=_HEADERS, timeout=timeout)
+        resp = get_limited(crx_url, headers=_HEADERS, timeout=timeout)
         xml = resp.text
         status_m = re.search(r'status="([^"]+)"', xml)
         crx_status = status_m.group(1) if status_m else "unknown"
@@ -99,7 +101,7 @@ def probe_stores(ext_id: str, timeout: int = 8) -> list[str]:
     # Check Edge (product API)
     edge_url = _EDGE_PRODUCT_API_URL.format(ext_id=ext_id)
     try:
-        resp = requests.get(edge_url, headers=_HEADERS, timeout=timeout)
+        resp = get_limited(edge_url, headers=_HEADERS, timeout=timeout)
         on_edge = resp.status_code == 200 and bool(resp.json().get("name"))
     except Exception:
         on_edge = False
@@ -122,7 +124,7 @@ def fetch_edge_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
     """
     url = _EDGE_PRODUCT_API_URL.format(ext_id=ext_id)
     try:
-        resp = requests.get(url, headers=_HEADERS, timeout=timeout)
+        resp = get_limited(url, headers=_HEADERS, timeout=timeout)
     except requests.RequestException:
         return _empty_meta("edge")
 
@@ -307,7 +309,7 @@ def fetch_amo_meta(ext_id: str, timeout: int = 10) -> StoreMeta:
     """Fetch Firefox AMO metadata via public API."""
     url = _AMO_API_URL.format(ext_id=ext_id)
     try:
-        resp = requests.get(url, headers=_HEADERS, timeout=timeout)
+        resp = get_limited(url, headers=_HEADERS, timeout=timeout)
     except requests.RequestException:
         return _empty_meta("amo")
 
@@ -386,7 +388,7 @@ def check_crx_liveness(ext_id: str, timeout: int = 10) -> LivenessResult:
     """
     url = _CRX_LIVENESS_URL.format(ext_id=ext_id)
     try:
-        resp = requests.get(url, headers=_HEADERS, timeout=timeout)
+        resp = get_limited(url, headers=_HEADERS, timeout=timeout)
         xml = resp.text[:2000]  # don't store huge responses
     except requests.RequestException as e:
         return LivenessResult(

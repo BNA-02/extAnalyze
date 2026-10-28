@@ -75,7 +75,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install "bandit[toml]>=1.7,<1.9"
+      - run: pip install --require-hashes -r requirements-dev.lock
 
       - name: Run bandit
         # --exit-zero: findings surface as artifact only, never block dev branch.
@@ -107,12 +107,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install "pip-audit>=2.7" "guarddog>=3.2.0"
+      - run: pip install --require-hashes -r requirements-dev.lock
 
       - name: pip-audit — known CVEs
         run: |
           pip-audit \
-            --requirement requirements.txt \
+            --requirement requirements.lock \
             --format markdown \
             --output pip-audit-results.md
 
@@ -156,7 +156,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[dev]"
+      - run: pip install --require-hashes -r requirements-dev.lock && pip install --no-deps -e .
 
       - name: Run tests
         run: |

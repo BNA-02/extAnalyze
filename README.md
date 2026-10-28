@@ -3,18 +3,35 @@
 Static security analysis and threat intelligence CLI for browser extensions.
 
 Supports Chrome, Edge (Chromium), and Firefox. Analyzes extensions without
-executing them — downloads the CRX/XPI, parses the manifest, scores every
+executing them. It downloads the CRX/XPI, parses the manifest, scores every
 permission, detects dangerous combinations, and cross-references three threat
 intelligence databases.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Risk Scoring](#risk-scoring)
+- [Permission Taxonomy](#permission-taxonomy)
+- [Dangerous Combo Detection](#dangerous-combo-detection)
+- [Threat Intelligence Sources](#threat-intelligence-sources)
+- [Contributing](#contributing)
+- [Project Layout](#project-layout)
+- [Code review](#code-review)
+- [Limitations](#limitations)
+- [License](#license)
 
 ---
 
 ## Features
 
 **Threat Intelligence**
-- [TPCI](https://github.com/The-Privacy-Commons-Institute/chrome-mal-ids) — researcher-confirmed malicious extensions
-- [Malext/Sentry](https://github.com/malvuln/malext) — community malware database with SHA256 cross-check post-download
-- Store liveness — Chrome CRX API, Edge Add-ons API, Firefox AMO availability check
+- [TPCI](https://github.com/The-Privacy-Commons-Institute/chrome-mal-ids): researcher-confirmed malicious extensions
+- [Malext/Sentry](https://github.com/malvuln/malext): community malware database with SHA256 cross-check post-download
+- Store liveness: Chrome CRX API, Edge Add-ons API, Firefox AMO availability check
 
 **Static Permission Analysis**
 - 58-entry permission taxonomy with MV2 and MV3 specific abuse descriptions
@@ -32,7 +49,7 @@ intelligence databases.
 
 **MV2 vs MV3 awareness**
 - Manifest version detected and displayed on every analysis
-- Permission abuse descriptions are version-aware example : `webRequestBlocking` (MV2-only MITM) distinguished from read-only MV3 webRequest
+- Permission abuse descriptions are version-aware example: `webRequestBlocking` (MV2-only MITM) distinguished from read-only MV3 webRequest
 
 **Output**
 - JSON (`--output json`) for CI/pipeline integration
@@ -57,7 +74,7 @@ Python 3.10+ required.
 ## Usage
 
 ```bash
-# Single extension — auto-detect browser
+# Single extension - auto-detect browser
 extanalyze analyze cjpalhdlnbpafiamejdnhcphjbkeiagm
 
 # Force browser
@@ -78,7 +95,7 @@ extanalyze cache status
 extanalyze cache clear
 ```
 
-**ids.txt format** — one extension ID per line, blank lines and `#` comments ignored:
+**ids.txt format** - one extension ID per line, blank lines and `#` comments ignored:
 
 ```
 # Chrome extensions
@@ -119,11 +136,11 @@ Selected CRITICAL entries:
 
 | Permission | Score | Why |
 |---|---|---|
-| `webRequestFilterResponse.serviceWorkerScript` | 10 | Inject code into target site's service worker — runs at site origin, persists after extension removal |
+| `webRequestFilterResponse.serviceWorkerScript` | 10 | Inject code into target site's service worker - runs at site origin, persists after extension removal |
 | `debugger` | 10 | Full tab control: intercept network at protocol level, read JS vars, capture screenshots |
 | `webAuthenticationProxy` | 9 | MITM on FIDO2/passkey authentication |
 | `userScripts` | 9 | Arbitrary JS injection bypassing MV3 CSP restrictions |
-| `webRequestFilterResponse` | 9 | Response body MITM — read and modify page content as it streams |
+| `webRequestFilterResponse` | 9 | Response body MITM - read and modify page content as it streams |
 | `nativeMessaging` | 9 | Full browser sandbox escape to host OS |
 | `vpnProvider` | 9 | Route all device traffic through attacker infrastructure (ChromeOS) |
 
@@ -161,28 +178,9 @@ Cache lives at `~/.extanalyze/cache/`.
 
 ---
 
-## Development
+## Contributing
 
-```bash
-pip install -e '.[dev]'
-
-# Lint
-ruff check extanalyze/
-ruff format extanalyze/
-
-# Tests (72 unit tests, no network)
-pytest tests/ -v
-
-# SAST
-bandit -r extanalyze/ -c pyproject.toml
-
-# SCA
-pip-audit
-```
-
-CI runs on push/PR via two workflows:
-- `.github/workflows/ci-dev.yml` — triggers on `develop` (fast feedback, single Python, informational SAST)
-- `.github/workflows/ci-main.yml` — triggers on PR to `main` (full matrix, hard SAST gate, build check)
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, tests, linting, security scans and CI.
 
 ---
 
@@ -227,16 +225,34 @@ tests/
 
 ---
 
+## Code review
+
+After extraction, `extanalyze/analysis/code_review.py` statically scans the extension's JS and HTML (never executing it) for:
+
+- **Dynamic code loading**: `eval`, `new Function`, `importScripts`/`import()` of remote URLs, runtime script injection, remote `<script src>`
+- **Exfiltration channels**: `sendBeacon`, POSTs to hard-coded URLs, WebSockets, pixel beacons
+- **Sensitive data access**: cookies, history, password fields, keystrokes, clipboard, request interception
+- **Obfuscation**: `_0x` identifiers, base64 blobs, `fromCharCode` chains, escape runs
+- **Exfiltration flows**: a file that both reads sensitive data and has an outbound channel
+- **External domains** referenced in the code
+
+These are heuristic leads for manual review, not verdicts: minified libraries trigger some rules legitimately. Score contribution is capped at 30 points.
+
+---
+
 ## Limitations
 
-- **Static analysis only** — no dynamic execution, no runtime network capture
-- **CRX catalog snapshot** — Chrome catalog dated 2023-10-18; newer extensions fall back to live store metadata
-- **CWS JSON API** — undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend
-- **Permission necessity mapping** — rule-based heuristics per category, not semantic reasoning
-- **No Firefox built-in registry** — Firefox built-in extensions not enumerated
+- **Regex-based code review**: no AST or data-flow analysis; obfuscated or split-up code can evade it
+- **Static analysis only**: no dynamic execution, no runtime network capture
+- **CRX catalog snapshot**: Chrome catalog dated 2023-10-18; newer extensions fall back to live store metadata
+- **CWS JSON API**: undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend
+- **Permission necessity mapping**: rule-based heuristics per category, not semantic reasoning
+- **No Firefox built-in registry**: Firefox built-in extensions not enumerated
 
 ---
 
 ## License
 
-Private. All rights reserved.
+Released under the [MIT License](LICENSE). You are free to use, modify and build on this tool, including in your own security research and tooling.
+
+See [SECURITY.md](SECURITY.md) for how to report vulnerabilities.

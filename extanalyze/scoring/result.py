@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from extanalyze.analysis.code_review import CodeReviewResult
 from extanalyze.analysis.deep.findings import DeepAnalysisResult
 from extanalyze.analysis.permissions import PermissionAnalysis
 from extanalyze.core.enrichment import EnrichmentResult
@@ -50,3 +51,5 @@ class AnalysisResult:
     download_error: str = ""  # non-empty if download failed
     manifest_error: str = ""  # non-empty if manifest parse failed
     is_builtin: bool = False  # True for extensions baked into the browser
+    code_review: CodeReviewResult | None = None  # None if extraction/review did not run
+    code_review_error: str = ""  # non-empty if the code review step failed
