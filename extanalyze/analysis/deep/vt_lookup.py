@@ -1,5 +1,5 @@
 """
-vt_lookup.py — Optional VirusTotal domain reputation lookup.
+vt_lookup.py - Optional VirusTotal domain reputation lookup.
 
 Only runs when VIRUSTOTAL_API_KEY environment variable is set.
 Uses VT API v3 (free tier: 4 lookups/min, 500/day).

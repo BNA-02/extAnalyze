@@ -134,7 +134,7 @@ def aggregate(
         elif source == "firefox-amo":
             reasons.append("Firefox AMO: extension no longer available (disabled or removed)")
         elif source in ("builtin", ""):
-            pass  # builtin or unknown — no meaningful removal signal
+            pass  # builtin or unknown - no meaningful removal signal
         else:
             reasons.append(
                 "Google CRX API: status=noupdate — extension likely removed from CWS "
@@ -152,7 +152,7 @@ def aggregate(
         pts = PERM_POINTS.get(perm_entry.sensitivity, 0)
         score += pts
 
-    # <all_urls> host permission — only add points if NOT already scored as a named permission
+    # <all_urls> host permission - only add points if NOT already scored as a named permission
     # (avoids double-counting when <all_urls> is both normalized into host_permissions
     # and scored as a PermissionEntry)
     all_urls_in_named = any(p.name == "<all_urls>" for p in perm_analysis.permissions)

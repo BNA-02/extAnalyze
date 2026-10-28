@@ -61,7 +61,7 @@ def _empty_store(source: str) -> StoreMeta:
 def preload_intel() -> None:
     """
     Pre-load threat intel caches BEFORE spawning thread pool.
-    Both datasets are read-only after loading — safe for concurrent reads.
+    Both datasets are read-only after loading - safe for concurrent reads.
     """
     print("[worker] Pre-loading threat intelligence caches...", file=sys.stderr)
     tpci_mod._ensure_loaded()
@@ -83,10 +83,10 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
             if browser == "firefox":
                 store = fetch_amo_meta(ext_id)
             elif browser == "edge":
-                # Edge has its own product API — never use CWS for Edge IDs.
+                # Edge has its own product API - never use CWS for Edge IDs.
                 store = fetch_edge_meta(ext_id)
             elif browser == "auto":
-                # Check builtin list first — Chrome/Edge builtins are not on CWS
+                # Check builtin list first - Chrome/Edge builtins are not on CWS
                 # and would waste a probe_stores round-trip returning nothing useful.
                 from .core.enrichment import _BUILTIN_EXTENSIONS
 
@@ -106,7 +106,7 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
                         established=True,
                     )
                 else:
-                    # No browser specified for a 32-char CRX ID — probe both stores
+                    # No browser specified for a 32-char CRX ID - probe both stores
                     # to determine where the extension actually lives.
                     found_on = probe_stores(ext_id)
                     if "chrome" in found_on and "edge" in found_on:
@@ -133,7 +133,7 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
                         browser = "chrome"
                         store = fetch_cws_meta(ext_id)
                     else:
-                        # Not found on either store — still run TI checks
+                        # Not found on either store - still run TI checks
                         browser = "chrome"  # default for download attempt
                         store = _empty_store("unknown")
             else:
@@ -210,7 +210,7 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
     code_review_error = ""
 
     if is_builtin:
-        # Builtin extensions are baked into the browser binary — no CRX to download.
+        # Builtin extensions are baked into the browser binary - no CRX to download.
         # We know what they are from the registry; skip download entirely.
         crx_format = "builtin"
     else:

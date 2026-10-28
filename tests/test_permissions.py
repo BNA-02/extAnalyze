@@ -154,7 +154,7 @@ class TestAnalyze:
             host_permissions=["<all_urls>"],
         )
         pa = analyze(m)
-        # COMBO_007 is mv2_only — must not fire on MV3
+        # COMBO_007 is mv2_only - must not fire on MV3
         combo_ids = [c.combo_id for c in pa.combo_hits]
         assert "COMBO_007" not in combo_ids
 

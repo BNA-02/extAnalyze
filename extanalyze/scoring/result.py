@@ -1,5 +1,5 @@
 """
-Full analysis result dataclass — passed between all layers and reporters.
+Full analysis result dataclass - passed between all layers and reporters.
 """
 
 from __future__ import annotations

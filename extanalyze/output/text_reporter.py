@@ -97,7 +97,7 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
 
     _add_ti_row(ti_table, "TPCI", result.tpci.hit, _tpci_detail(result.tpci))
     _add_ti_row(ti_table, "Sentry", result.sentry.hit, _sentry_detail(result.sentry))
-    # Label the liveness source correctly — not always Google CRX API
+    # Label the liveness source correctly - not always Google CRX API
     liveness_source = result.liveness.status_xml or ""
     if liveness_source == "edge-store":
         liveness_label = "Edge Add-ons API"
@@ -138,7 +138,7 @@ def print_report(result: AnalysisResult, console: Console | None = None) -> None
     # ── Risk Factors ───────────────────────────────────────────────────────
     # Only show risk factors when there is something meaningful to show.
     # If there is no manifest (download failed) and no TI hits, suppress the
-    # section entirely — an empty reasons list from a failed download is noise.
+    # section entirely - an empty reasons list from a failed download is noise.
     has_ti_hit = result.tpci.hit or result.sentry.hit or result.liveness.google_malware_confirmed
     if result.risk.reasons and (result.manifest is not None or has_ti_hit):
         console.print("\n[bold underline]Risk Factors[/bold underline]")
@@ -231,7 +231,7 @@ def _print_permissions(console: Console, result: AnalysisResult) -> None:
             if perm.mv2_only:
                 abuse_text = "[yellow]⚠ MV2-only permission declared in MV3 manifest[/yellow]"
             elif _is_generic_mv3_note(mv3):
-                # mv3_abuse is just "Same/Identical in MV3" — show the real detail from MV2
+                # mv3_abuse is just "Same/Identical in MV3" - show the real detail from MV2
                 mv3_suffix = "" if "unchanged" in mv3.lower() else f" ({mv3})"
                 abuse_text = mv2 + (" — unchanged in MV3" if not mv3_suffix else mv3_suffix)
             else:
@@ -249,7 +249,7 @@ def _print_permissions(console: Console, result: AnalysisResult) -> None:
         )
         rendered_as_named.add(perm.name)
 
-    # Host permissions section — separate from named permissions
+    # Host permissions section - separate from named permissions
     # Skip any that were already rendered in the named loop (e.g. <all_urls>
     # normalised into both sets in edge cases)
     remaining_hosts = [h for h in sorted(pa.host_permissions) if h not in rendered_as_named]

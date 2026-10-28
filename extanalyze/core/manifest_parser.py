@@ -17,7 +17,7 @@ _GOOGLE_UPDATE_DOMAINS = {
     "update.googleapis.com",
     "gvt1.com",
     "gvt2.com",
-    # Edge Add-ons official update channel — not attacker-controlled
+    # Edge Add-ons official update channel - not attacker-controlled
     "edge.microsoft.com",
     "extensionwebstorebase",
 }

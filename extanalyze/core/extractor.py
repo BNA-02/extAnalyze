@@ -23,7 +23,7 @@ def _cleanup_temp_dirs() -> None:
     for d in _TEMP_DIRS:
         try:
             shutil.rmtree(d, ignore_errors=True)
-        except Exception:  # noqa: S110 — cleanup, log suppressed intentionally
+        except Exception:  # noqa: S110 - cleanup, log suppressed intentionally
             pass
 
 

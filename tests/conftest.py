@@ -1,5 +1,5 @@
 """
-conftest.py — shared fixtures for extanalyze test suite.
+conftest.py - shared fixtures for extanalyze test suite.
 """
 import sys
 from pathlib import Path
