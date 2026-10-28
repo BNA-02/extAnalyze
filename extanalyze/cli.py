@@ -19,11 +19,31 @@ console = Console()
 err_console = Console(stderr=True)
 
 
-@click.group()
+class _DefaultAnalyzeGroup(click.Group):
+    """Route `extanalyze <id> [options]` to the analyze command.
+
+    Anything that is not a known subcommand (or --help/--version) is treated as arguments
+    to `analyze`, so `extanalyze <id>` and `extanalyze --file ids.txt` both work.
+    """
+
+    default_command = "analyze"
+
+    def parse_args(self, ctx, args):
+        if args and args[0] not in self.commands and args[0] not in ("--help", "--version"):
+            args = [self.default_command, *args]
+        return super().parse_args(ctx, args)
+
+
+@click.group(cls=_DefaultAnalyzeGroup, context_settings={"help_option_names": ["--help"]})
 @click.version_option()
 def main():
-    """extanalyze - Browser extension security analysis CLI."""
-    pass
+    """extanalyze - Browser extension security analysis CLI.
+
+    \b
+    extanalyze <extension-id> [options]     analyze one extension
+    extanalyze --file ids.txt [options]     analyze a batch
+    extanalyze cache status|clear           manage the local cache
+    """
 
 
 # ─────────────────────────────────────────────────────────────────────────────

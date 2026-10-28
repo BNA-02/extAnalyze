@@ -89,20 +89,20 @@ Python 3.10+ required.
 
 ```bash
 # Single extension - auto-detect browser
-extanalyze analyze cjpalhdlnbpafiamejdnhcphjbkeiagm
+extanalyze cjpalhdlnbpafiamejdnhcphjbkeiagm
 
 # Force browser
-extanalyze analyze cjpalhdlnbpafiamejdnhcphjbkeiagm --browser chrome
-extanalyze analyze amnbcmdbanbkjhnfoeceemmmdiepnbpp --browser edge
-extanalyze analyze uBlock0@raymondhill.net --browser firefox
+extanalyze cjpalhdlnbpafiamejdnhcphjbkeiagm --browser chrome
+extanalyze amnbcmdbanbkjhnfoeceemmmdiepnbpp --browser edge
+extanalyze uBlock0@raymondhill.net --browser firefox
 
 # Bulk analysis from file
-extanalyze analyze --file ids.txt
-extanalyze analyze --file ids.txt --browser edge
+extanalyze --file ids.txt
+extanalyze --file ids.txt --browser edge
 
 # JSON output
-extanalyze analyze <id> --output json
-extanalyze analyze --file ids.txt --output json > results.json
+extanalyze <id> --output json
+extanalyze --file ids.txt --output json > results.json
 
 # Cache management
 extanalyze cache status
