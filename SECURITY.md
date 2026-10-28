@@ -2,8 +2,8 @@
 
 ## Reporting a vulnerability
 
-Please report vulnerabilities privately through
-[GitHub private vulnerability reporting](https://github.com/BNA-02/extAnalyze/security/advisories/new).
+Please report vulnerabilities privately by email to
+[ahmedbn.pro@outlook.com](mailto:ahmedbn.pro@outlook.com).
 Do not open a public issue for security problems.
 
 Include the affected version or commit, a description of the impact, and steps
