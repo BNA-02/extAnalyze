@@ -96,6 +96,7 @@ skips = ["B101", "B311"]
 # ── pytest ───────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["plugins/dynamic"]
 addopts = "--tb=short -q"
 markers = [
     "unit: pure unit tests, no network or disk I/O",

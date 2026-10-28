@@ -34,6 +34,13 @@ and inaccuracies in risk scores or threat-intel data (open a normal issue).
 - Downloaded packages and extraction directories are deleted after each scan
 - HTML report output is escaped
 
+## Dynamic analysis
+
+`--dynamic` is the only mode that executes extension code, and only inside a hardened Docker
+container (no network by default, read-only root, dropped capabilities, resource limits). Its
+output is treated as untrusted and schema-validated before use. A container escape or a flaw in
+the sandbox driver is in scope for reports.
+
 ## Recommendations when scanning hostile extensions
 
 Run extanalyze in a disposable VM or container with limited disk and no

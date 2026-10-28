@@ -516,6 +516,7 @@ class CodeReviewResult:
     deep: bool = False  # True when the --deep extras ran
     retire_js: list[dict] = field(default_factory=list)  # vulnerable bundled libraries
     vt_results: list[dict] = field(default_factory=list)  # VirusTotal domain lookups
+    dynamic: dict | None = None  # sandbox observations (extanalyze-dynamic plugin)
 
     @property
     def high_count(self) -> int:

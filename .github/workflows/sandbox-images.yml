@@ -1,0 +1,73 @@
+name: Sandbox images
+
+# Builds the dynamic-analysis sandbox images. Pushes to GHCR only for version tags;
+# pull requests and manual runs just build (and run the integration tests on develop/PRs).
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: ["plugins/dynamic/**", "tests/fixtures/dynamic/**", "tests/test_dynamic.py"]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [chromium-mv3, chromium-mv2]
+    env:
+      IMAGE: ghcr.io/bna-02/extanalyze-sandbox
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          enable-cache: false
+
+      - name: Build (local)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
+        with:
+          context: plugins/dynamic/extanalyze_dynamic/sandbox
+          target: ${{ matrix.target }}
+          load: true
+          tags: extanalyze-sandbox:${{ matrix.target }}
+
+      - name: Sandbox integration tests
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          uv sync --frozen --extra dev --python 3.12
+          case "$TARGET" in
+            chromium-mv3) K="sandbox_detects_exfiltration" ;;
+            chromium-mv2) K="mv2_sandbox" ;;
+          esac
+          uv run --no-sync pytest tests/test_dynamic.py -m integration -k "$K" -v
+
+      - name: Log in to GHCR
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TARGET: ${{ matrix.target }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          docker tag "extanalyze-sandbox:$TARGET" "$IMAGE:$TARGET-$VERSION"
+          docker tag "extanalyze-sandbox:$TARGET" "$IMAGE:$TARGET"
+          docker push "$IMAGE:$TARGET-$VERSION"
+          docker push "$IMAGE:$TARGET"

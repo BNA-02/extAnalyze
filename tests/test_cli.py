@@ -6,7 +6,7 @@ from extanalyze import cli
 def test_bare_id_routes_to_analyze(monkeypatch):
     seen = {}
 
-    def fake(inp, deep=False):
+    def fake(inp, deep=False, dynamic=None):
         seen["id"] = inp.ext_id
         raise SystemExit(0)
 
@@ -20,7 +20,9 @@ def test_explicit_analyze_still_works(monkeypatch):
     monkeypatch.setattr(
         cli,
         "analyze_single",
-        lambda inp, deep=False: seen.update(id=inp.ext_id) or (_ for _ in ()).throw(SystemExit(0)),
+        lambda inp, deep=False, dynamic=None: (
+            seen.update(id=inp.ext_id) or (_ for _ in ()).throw(SystemExit(0))
+        ),
     )
     CliRunner().invoke(cli.main, ["analyze", "cjpalhdlnbpafiamejdnhcphjbkeiagm"])
     assert seen["id"] == "cjpalhdlnbpafiamejdnhcphjbkeiagm"

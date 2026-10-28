@@ -13,7 +13,8 @@ from rich.console import Console
 from .core.enrichment import load_catalog
 from .core.ingestion import InvalidExtensionID, iter_single, load_ids_from_file
 from .output import csv_reporter, html_reporter, json_reporter, text_reporter
-from .worker import analyze_bulk, analyze_single
+from .plugins import PluginMissing, load_dynamic_runner, register_cli_plugins
+from .worker import DynamicOptions, analyze_bulk, analyze_single
 
 console = Console()
 err_console = Console(stderr=True)
@@ -112,7 +113,43 @@ def main():
         "Slower."
     ),
 )
-def analyze(ext_id, input_file, browser, output, out_dir, workers, catalog, rebuild_catalog, deep):
+@click.option(
+    "--dynamic",
+    is_flag=True,
+    default=False,
+    help=(
+        "Also run the extension in a Docker sandbox and observe its behaviour (network requests, "
+        "canary exfiltration). Needs the extanalyze-dynamic plugin and Docker. Executes untrusted "
+        "code, only inside the container."
+    ),
+)
+@click.option(
+    "--dynamic-network",
+    is_flag=True,
+    default=False,
+    help="Let the sandbox reach the real internet (default: no network; attempts are still observed).",
+)
+@click.option(
+    "--dynamic-seconds",
+    type=click.IntRange(10, 300),
+    default=45,
+    show_default=True,
+    help="How long to exercise the extension in the sandbox.",
+)
+def analyze(
+    ext_id,
+    input_file,
+    browser,
+    output,
+    out_dir,
+    workers,
+    catalog,
+    rebuild_catalog,
+    deep,
+    dynamic,
+    dynamic_network,
+    dynamic_seconds,
+):
     """
     Analyze one extension ID or a batch from a file.
 
@@ -155,12 +192,27 @@ def analyze(ext_id, input_file, browser, output, out_dir, workers, catalog, rebu
         err_console.print("[yellow]No valid extension IDs found.[/yellow]")
         sys.exit(0)
 
+    # ── Dynamic analysis preconditions (fail before any download) ─────────
+    dyn = None
+    if dynamic:
+        try:
+            load_dynamic_runner()
+        except PluginMissing as e:
+            raise click.ClickException(str(e)) from e
+        if dynamic_network:
+            err_console.print(
+                "[yellow]--dynamic-network: the sandboxed extension can contact real servers.[/yellow]"
+            )
+        dyn = DynamicOptions(seconds=dynamic_seconds, allow_network=dynamic_network)
+
     # ── Run analysis ──────────────────────────────────────────────────────
     if len(inputs) == 1:
-        result = analyze_single(inputs[0], deep=deep)
+        result = analyze_single(inputs[0], deep=deep, dynamic=dyn)
         results = [result]
     else:
-        results = analyze_bulk(inputs, max_workers=workers, console=err_console, deep=deep)
+        results = analyze_bulk(
+            inputs, max_workers=workers, console=err_console, deep=deep, dynamic=dyn
+        )
         # Sort by risk score descending for output
         results.sort(key=lambda r: -r.risk.score)
 
@@ -254,3 +306,6 @@ def cache(action):
 
 if __name__ == "__main__":
     main()
+
+
+register_cli_plugins(main)

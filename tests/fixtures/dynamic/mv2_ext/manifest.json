@@ -1,0 +1,7 @@
+{
+  "manifest_version": 2,
+  "name": "Legacy Beacon",
+  "version": "1.0",
+  "permissions": ["<all_urls>", "cookies"],
+  "background": {"scripts": ["bg.js"], "persistent": true}
+}

@@ -8,6 +8,7 @@ from __future__ import annotations
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from datetime import datetime
 
 from rich.console import Console
@@ -16,6 +17,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn
 from .analysis.categorizer import categorize
 from .analysis.code_review import review_directory
 from .analysis.deep import run_deep_analysis
+from .analysis.dynamic import apply_dynamic
 from .analysis.permissions import analyze as analyze_permissions
 from .core.downloader import ExtensionNotDownloadableError, download
 from .core.enrichment import enrich
@@ -35,12 +37,20 @@ from .intel import sentry as sentry_mod
 from .intel import tpci as tpci_mod
 from .intel.sentry import SentryResult
 from .intel.tpci import TPCIResult
+from .plugins import load_dynamic_runner
 from .scoring.aggregator import aggregate
 from .scoring.result import AnalysisResult
 
 # Rate limiter for live Google API calls (avoid hammering)
 _google_semaphore = threading.Semaphore(2)
 _store_semaphore = threading.Semaphore(3)
+_dynamic_semaphore = threading.Semaphore(1)  # one sandbox container at a time
+
+
+@dataclass(frozen=True)
+class DynamicOptions:
+    seconds: int = 45
+    allow_network: bool = False
 
 
 def _empty_store(source: str) -> StoreMeta:
@@ -69,7 +79,9 @@ def preload_intel() -> None:
     print("[worker] TI caches ready.", file=sys.stderr)
 
 
-def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
+def analyze_single(
+    inp: ExtensionInput, deep: bool = False, dynamic: DynamicOptions | None = None
+) -> AnalysisResult:
     """
     Full pipeline for one extension. Designed to run inside a thread.
     Never raises: errors are captured in AnalysisResult fields.
@@ -208,6 +220,7 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
     extract_result = None
     code_review = None
     code_review_error = ""
+    dynamic_error = ""
 
     if is_builtin:
         # Builtin extensions are baked into the browser binary - no CRX to download.
@@ -260,6 +273,19 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
                     # --deep adds entropy/deobfuscation, RetireJS and VirusTotal to the same result
                     if deep:
                         run_deep_analysis(extract_result, code_review)
+                    if dynamic is not None:
+                        try:
+                            with _dynamic_semaphore:
+                                observation = load_dynamic_runner()(
+                                    extract_result.tmp_dir,
+                                    manifest_version=getattr(manifest, "manifest_version", 3),
+                                    browser=browser,
+                                    seconds=dynamic.seconds,
+                                    allow_network=dynamic.allow_network,
+                                )
+                            apply_dynamic(code_review, observation)
+                        except Exception as e:
+                            dynamic_error = str(e)
                 except Exception as e:
                     code_review_error = str(e)
 
@@ -323,6 +349,7 @@ def analyze_single(inp: ExtensionInput, deep: bool = False) -> AnalysisResult:
         is_builtin=is_builtin,
         code_review=code_review,
         code_review_error=code_review_error,
+        dynamic_error=dynamic_error,
     )
 
 
@@ -331,6 +358,7 @@ def analyze_bulk(
     max_workers: int = 8,
     console: Console | None = None,
     deep: bool = False,
+    dynamic: DynamicOptions | None = None,
 ) -> list[AnalysisResult]:
     """
     Dispatch analysis for multiple extensions using a thread pool.
@@ -354,7 +382,7 @@ def analyze_bulk(
         task = progress.add_task(f"Analyzing {len(inputs)} extensions...", total=len(inputs))
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = {pool.submit(analyze_single, inp, deep): inp for inp in inputs}
+            futures = {pool.submit(analyze_single, inp, deep, dynamic): inp for inp in inputs}
 
             for future in as_completed(futures):
                 inp = futures[future]

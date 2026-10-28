@@ -185,6 +185,26 @@ Examples:
 
 Cache lives at `~/.extanalyze/cache/`.
 
+---
+
+## Dynamic analysis (`--dynamic`)
+
+Static analysis never runs the extension. `--dynamic` additionally **executes it inside a disposable Docker sandbox** and observes what it does. It ships as an optional plugin so the core CLI stays light:
+
+```bash
+pip install "git+https://github.com/BNA-02/extAnalyze.git#subdirectory=plugins/dynamic"   # included in the .deb
+extanalyze dynamic pull            # download the sandbox images (or: extanalyze dynamic build)
+extanalyze <id> --dynamic          # add --dynamic-seconds N, --dynamic-network
+```
+
+- **What it does:** loads the extension in headless Chromium, browses local test pages that impersonate popular sites (login and card forms, cookies and localStorage seeded with unique canary values), and records every external request. If a canary value shows up in an outbound request (raw, URL-encoded, base64, hex), that is confirmed exfiltration (`CR-RT-001`, CRITICAL).
+- **Images:** `chromium-mv3` (current Chrome for Testing) and `chromium-mv2` (Chrome for Testing 126, the last line that loads Manifest V2 extensions). Built on Red Hat Hardened Images (`registry.access.redhat.com/hi/nodejs`, non-root, no package manager), browsers pinned by version and SHA-256.
+- **Isolation:** no network by default (attempts are still observed, nothing leaves), read-only filesystem, all capabilities dropped, no-new-privileges, pid/memory/cpu limits, extension mounted read-only, host-side timeout. `--dynamic-network` lets it reach the real internet; use it only on a machine you are willing to expose.
+- **Scoring:** runtime-confirmed findings (`CR-RT-*`) are scored outside the static cap, with their own cap.
+- **Limits:** Chromium only for now (Firefox is planned); evasive extensions (sleep timers, geo or user-agent checks, delayed activation) may not trigger; not exhaustive. A container is a strong boundary, not a perfect one: keep Docker up to date.
+
+---
+
 ## Contributing
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, tests, linting, security scans and CI.

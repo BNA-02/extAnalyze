@@ -51,8 +51,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install ruff==0.16.9
-      - run: ruff check extanalyze/ --output-format=github
-      - run: ruff format --check extanalyze/
+      - run: ruff check extanalyze/ plugins/ --output-format=github
+      - run: ruff format --check extanalyze/ plugins/
 
   # ── 3. SAST ────────────────────────────────────────────────────────────────
   sast:
@@ -76,9 +76,9 @@ jobs:
         # Hard gate: medium+/medium+ findings fail the PR.
         # Resolve findings or add #nosec with justification before merging.
         run: |
-          uv run --no-sync bandit -r extanalyze/ -ll -ii \
+          uv run --no-sync bandit -r extanalyze/ plugins/dynamic/ -ll -ii \
             --format json --output bandit-results.json
-          uv run --no-sync bandit -r extanalyze/ -ll -ii --format txt
+          uv run --no-sync bandit -r extanalyze/ plugins/dynamic/ -ll -ii --format txt
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always()

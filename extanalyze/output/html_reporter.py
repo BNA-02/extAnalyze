@@ -299,7 +299,27 @@ def _code_review_html(r: AnalysisResult) -> str:
     empty = (
         "" if items else '<div style="color:#34d399">No suspicious code patterns detected.</div>'
     )
-    return h2 + note + empty + "".join(items) + flows + domains
+    dyn_html = ""
+    if cr.dynamic:
+        d = cr.dynamic
+        leaked = sorted({h["canary"] for h in d["canary_hits"]})
+        leak_html = (
+            f'<div style="color:#f87171">Canary data left the browser: '
+            f"{html.escape(', '.join(leaked))}</div>"
+            if leaked
+            else ""
+        )
+        dyn_html = (
+            '<div style="margin-top:12px;color:#d1d5db">'
+            f"<strong>Dynamic analysis</strong> (sandbox, "
+            f"{html.escape(str(d['browser'] or 'browser'))}, {d['duration_s']}s): "
+            f"{len(d['requests'])} external request(s) to {len(d['external_hosts'])} host(s)"
+            + leak_html
+            + '<div style="font-size:12px;color:#9ca3af">'
+            + html.escape(", ".join(d["external_hosts"][:15]))
+            + "</div></div>"
+        )
+    return h2 + note + empty + "".join(items) + flows + domains + dyn_html
 
 
 def _trust_html(store) -> str:

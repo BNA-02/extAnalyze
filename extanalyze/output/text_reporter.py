@@ -356,6 +356,24 @@ def _print_code_review(console: Console, result: AnalysisResult) -> None:
             f"  [dim]--deep: entropy/deobfuscation, {len(cr.retire_js)} vulnerable library hit(s), "
             f"{len(cr.vt_results)} VirusTotal lookup(s), {len(flagged)} flagged[/dim]"
         )
+    if cr.dynamic:
+        dyn = cr.dynamic
+        leaked = sorted({h["canary"] for h in dyn["canary_hits"]})
+        console.print(
+            f"\n  [bold]Dynamic analysis[/bold] (sandbox, {dyn['browser'] or 'browser'}, "
+            f"{dyn['duration_s']}s, {len(dyn['pages_visited'])} pages): "
+            f"{len(dyn['requests'])} external request(s) to {len(dyn['external_hosts'])} host(s)"
+        )
+        if leaked:
+            console.print(
+                f"    [bold red]Canary data observed leaving the browser:[/bold red] {', '.join(leaked)}"
+            )
+        for host in dyn["external_hosts"][:10]:
+            console.print(f"    [cyan]{escape(host)}[/cyan]")
+        for n in dyn["notes"][:3]:
+            console.print(f"    [dim]{escape(n)}[/dim]")
+    if result.dynamic_error:
+        console.print(f"  [red][!] Dynamic analysis failed:[/red] {escape(result.dynamic_error)}")
     if cr.files_skipped:
         console.print(f"  [yellow]{len(cr.files_skipped)} file(s) skipped (size limits)[/yellow]")
 
