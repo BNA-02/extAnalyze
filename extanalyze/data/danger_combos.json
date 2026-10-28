@@ -28,16 +28,16 @@
   },
   {
     "id": "COMBO_003",
-    "name": "C2 Host Communication + Persistence",
+    "name": "Native Host Communication + Persistence",
     "permissions": [
       "nativeMessaging",
       "storage"
     ],
     "match_mode": "all",
-    "severity": "CRITICAL",
-    "threat": "Communicates with local host application (sandbox escape) and persists C2 configuration locally",
-    "mv2_note": "Classic C2 implant pattern",
-    "mv3_note": "Identical risk in MV3 - native messaging unchanged"
+    "severity": "MEDIUM",
+    "threat": "Talks to a native host app on the endpoint and persists configuration locally. Common for password managers and security agents; suspicious only when the extension and its host app are not a known pair",
+    "mv2_note": "Needs a native host already installed on the endpoint that allows this extension",
+    "mv3_note": "Identical in MV3, native messaging is unchanged"
   },
   {
     "id": "COMBO_004",

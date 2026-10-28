@@ -40,16 +40,16 @@
   },
   "nativeMessaging": {
     "category": "host_comms",
-    "risk_score": 9,
-    "description": "Communicate with native applications installed on the host OS",
-    "mv2_abuse": "Full sandbox escape: talk to any registered host app, exfiltrate files, download payloads, achieve persistence beyond browser",
-    "mv3_abuse": "Full sandbox escape: talk to any registered host app, exfiltrate files, download payloads, achieve persistence beyond browser \u2014 native messaging API is unchanged in MV3",
+    "risk_score": 5,
+    "description": "Exchange messages with a native application installed on the host OS (password managers, security agents and MDM legitimately use this)",
+    "mv2_abuse": "Bridge to a native host app that must already be installed and must list this extension in its allowed_origins; abuse depends on what that app exposes. The extension cannot spawn arbitrary processes by itself",
+    "mv3_abuse": "Same as MV2: the native messaging API is unchanged in MV3. Risk comes from the endpoint's native host, not the extension alone",
     "mv2_only": false,
     "mv3_blocked": false,
     "data_exfil_vector": true,
     "c2_vector": true,
     "privilege_escalation": true,
-    "sensitivity": "CRITICAL"
+    "sensitivity": "HIGH"
   },
   "debugger": {
     "category": "devtools",

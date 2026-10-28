@@ -20,6 +20,7 @@ intelligence databases.
 - [Project Layout](#project-layout)
 - [Code review](#code-review)
 - [Limitations](#limitations)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 ## Features
@@ -154,7 +155,7 @@ Selected CRITICAL entries:
 | `webAuthenticationProxy` | 9 | MITM on FIDO2/passkey authentication |
 | `userScripts` | 9 | Arbitrary JS injection bypassing MV3 CSP restrictions |
 | `webRequestFilterResponse` | 9 | Response body MITM - read and modify page content as it streams |
-| `nativeMessaging` | 9 | Full browser sandbox escape to host OS |
+| `nativeMessaging` | 5 | Bridge to a native host app already installed on the endpoint (password managers, security agents); risk depends on that app |
 | `vpnProvider` | 9 | Route all device traffic through attacker infrastructure (ChromeOS) |
 
 ## Dangerous Combo Detection
@@ -192,11 +193,11 @@ Static analysis never runs the extension. `--dynamic` additionally **executes it
 ```bash
 pip install "git+https://github.com/BNA-02/extAnalyze.git#subdirectory=plugins/dynamic"   # included in the .deb
 extanalyze dynamic pull            # download the sandbox images (or: extanalyze dynamic build)
-extanalyze <id> --dynamic          # add --dynamic-seconds N, --dynamic-network
+extanalyze <id> --dynamic          # add --dynamic-seconds N, --dynamic-workers N, --dynamic-network
 ```
 
 - **What it does:** loads the extension in headless Chromium or Firefox, browses local test pages that impersonate popular sites (login and card forms, cookies and localStorage seeded with unique canary values), and records every external request. If a canary value shows up in an outbound request (raw, URL-encoded, base64, hex), that is confirmed exfiltration (`CR-RT-001`, CRITICAL).
-- **Images:** `chromium-mv3` (current Chrome for Testing), `chromium-mv2` (Chrome for Testing 126, the last line that loads Manifest V2 extensions) and `firefox` (current Firefox driven through geckodriver, since Playwright cannot load Firefox extensions). The right image is picked per extension from its browser and manifest version, so mixed batches work; the dynamic step runs one container at a time. Built on Red Hat Hardened Images (`registry.access.redhat.com/hi/nodejs`, non-root, no package manager), browsers and geckodriver pinned by version and SHA-256.
+- **Images:** `chromium-mv3` (current Chrome for Testing), `chromium-mv2` (Chrome for Testing 126, the last line that loads Manifest V2 extensions) and `firefox` (current Firefox driven through geckodriver, since Playwright cannot load Firefox extensions). The right image is picked per extension from its browser and manifest version, so mixed batches work; the dynamic step runs one container at a time by default (`--dynamic-workers N` runs up to N in parallel). Built on Red Hat Hardened Images (`registry.access.redhat.com/hi/nodejs`, non-root, no package manager), browsers and geckodriver pinned by version and SHA-256.
 - **Isolation:** no network by default (attempts are still observed, nothing leaves), read-only filesystem, all capabilities dropped, no-new-privileges, pid/memory/cpu limits, extension mounted read-only, host-side timeout. `--dynamic-network` lets it reach the real internet; use it only on a machine you are willing to expose.
 - **Scoring:** runtime-confirmed findings (`CR-RT-*`) are scored outside the static cap, with their own cap.
 - **Firefox specifics:** traffic goes through a recording proxy inside the container that answers every external request locally, so `--dynamic-network` has no effect on Firefox. Firefox's own housekeeping hosts are ignored, and attributing a request to the background page versus a content script is best effort.
@@ -277,6 +278,11 @@ Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIG
 - **CWS JSON API**: undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend
 - **Permission necessity mapping**: rule-based heuristics per category, not semantic reasoning
 - **No Firefox built-in registry**: Firefox built-in extensions not enumerated
+
+## Acknowledgements
+
+- The Chrome extension ID to name catalog (`crx_catalog.csv`, snapshot of 2023-10-18) comes from [Mapping Chrome extension IDs to their names, part 2](https://www.hexacorn.com/blog/2023/10/20/mapping-chrome-extension-ids-to-their-names-part-2/) by Hexacorn. Thank you for publishing it.
+- Threat intelligence: [TPCI](https://github.com/The-Privacy-Commons-Institute/chrome-mal-ids) and [Malext/Sentry](https://github.com/malvuln/malext).
 
 ## License
 

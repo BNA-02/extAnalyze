@@ -193,9 +193,26 @@ def test_mv2_sandbox_loads_legacy_extension():
 @pytest.mark.integration
 @pytest.mark.skipif(not _image_available("firefox"), reason="sandbox image not built")
 def test_firefox_sandbox_detects_exfiltration():
-    obs = runner.run_dynamic(FIXTURES / "firefox_ext", manifest_version=2, browser="firefox", seconds=30)
+    obs = runner.run_dynamic(
+        FIXTURES / "firefox_ext", manifest_version=2, browser="firefox", seconds=30
+    )
     assert "ff-c2.evil.test" in obs["external_hosts"]
     assert {h["canary"] for h in obs["canary_hits"]} >= {"cookie", "password", "email"}
     assert any(r["source"] == "background_page" for r in obs["requests"])
-    benign = runner.run_dynamic(FIXTURES / "benign_ext", manifest_version=3, browser="firefox", seconds=15)
+    benign = runner.run_dynamic(
+        FIXTURES / "benign_ext", manifest_version=3, browser="firefox", seconds=15
+    )
     assert benign["canary_hits"] == [] and benign["external_hosts"] == []
+
+
+def test_dynamic_options_bound_concurrency():
+    from extanalyze.worker import DynamicOptions
+
+    opts = DynamicOptions(workers=2)
+    assert opts.slots.acquire(blocking=False) and opts.slots.acquire(blocking=False)
+    assert not opts.slots.acquire(blocking=False)  # third container must wait
+    assert DynamicOptions().slots.acquire(blocking=False)  # default: one at a time
+    assert (
+        not (d := DynamicOptions()).slots.acquire(blocking=False)
+        or d.slots.acquire(blocking=False) is False
+    )

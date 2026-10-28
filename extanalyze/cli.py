@@ -136,6 +136,13 @@ def main():
     show_default=True,
     help="How long to exercise the extension in the sandbox.",
 )
+@click.option(
+    "--dynamic-workers",
+    type=click.IntRange(1, 8),
+    default=1,
+    show_default=True,
+    help="Sandbox containers to run at the same time (each is limited to 2 CPUs and 1 GB).",
+)
 def analyze(
     ext_id,
     input_file,
@@ -149,6 +156,7 @@ def analyze(
     dynamic,
     dynamic_network,
     dynamic_seconds,
+    dynamic_workers,
 ):
     """
     Analyze one extension ID or a batch from a file.
@@ -203,7 +211,9 @@ def analyze(
             err_console.print(
                 "[yellow]--dynamic-network: the sandboxed extension can contact real servers.[/yellow]"
             )
-        dyn = DynamicOptions(seconds=dynamic_seconds, allow_network=dynamic_network)
+        dyn = DynamicOptions(
+            seconds=dynamic_seconds, allow_network=dynamic_network, workers=dynamic_workers
+        )
 
     # ── Run analysis ──────────────────────────────────────────────────────
     if len(inputs) == 1:

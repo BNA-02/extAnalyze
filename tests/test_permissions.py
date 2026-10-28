@@ -195,3 +195,13 @@ class TestAnalyze:
         assert pa.combo_hits == []
         assert pa.has_all_urls is False
         assert pa.host_scope.scope_label == "NONE"
+
+
+class TestNativeMessagingScoring:
+    def test_native_messaging_is_high_not_critical_and_combo_is_medium(self):
+        m = _make_manifest(permissions=["nativeMessaging", "storage"])
+        pa = analyze(m, category="password_manager", category_confidence="HIGH")
+        entry = next(p for p in pa.permissions if p.name == "nativeMessaging")
+        assert entry.sensitivity == "HIGH" and entry.risk_score == 5
+        combo = next(c for c in pa.combo_hits if c.combo_id == "COMBO_003")
+        assert combo.severity == "MEDIUM"

@@ -1,7 +1,8 @@
 """
 Enrichment: resolve extension name and category from:
 1. Store metadata (most authoritative)
-2. 2023 CRX catalog (~386k extensions)
+2. 2023 CRX catalog (~386k extensions): Chrome extension ID to name inventory published by
+   Hexacorn (https://www.hexacorn.com/blog/2023/10/20/mapping-chrome-extension-ids-to-their-names-part-2/)
 3. Built-in extension hardcoded list
 Falls back to UNKNOWN.
 """

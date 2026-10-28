@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from rich.console import Console
@@ -44,13 +44,20 @@ from .scoring.result import AnalysisResult
 # Rate limiter for live Google API calls (avoid hammering)
 _google_semaphore = threading.Semaphore(2)
 _store_semaphore = threading.Semaphore(3)
-_dynamic_semaphore = threading.Semaphore(1)  # one sandbox container at a time
 
 
 @dataclass(frozen=True)
 class DynamicOptions:
     seconds: int = 45
     allow_network: bool = False
+    workers: int = 1  # sandbox containers running at the same time
+    # Shared by every analysis of one run; bounds concurrent containers
+    slots: threading.Semaphore = field(
+        default_factory=lambda: threading.Semaphore(1), compare=False
+    )
+
+    def __post_init__(self):
+        object.__setattr__(self, "slots", threading.Semaphore(max(1, self.workers)))
 
 
 def _empty_store(source: str) -> StoreMeta:
@@ -275,7 +282,7 @@ def analyze_single(
                         run_deep_analysis(extract_result, code_review)
                     if dynamic is not None:
                         try:
-                            with _dynamic_semaphore:
+                            with dynamic.slots:
                                 observation = load_dynamic_runner()(
                                     extract_result.tmp_dir,
                                     manifest_version=getattr(manifest, "manifest_version", 3),
