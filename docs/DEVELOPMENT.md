@@ -1,22 +1,21 @@
 # Development
 
 ```bash
-# Reproducible, hash-verified install (recommended)
-pip install --require-hashes -r requirements-dev.lock
-pip install --no-deps -e .
+# Reproducible install from uv.lock (hash-verified)
+uv sync --extra dev
 
 # Lint
-ruff check extanalyze/
-ruff format extanalyze/
+uv run ruff check extanalyze/
+uv run ruff format extanalyze/
 
 # Tests (unit tests, no network)
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # SAST
-bandit -r extanalyze/ -c pyproject.toml
+uv run bandit -r extanalyze/ -ll -ii -c pyproject.toml
 
 # SCA
-pip-audit
+uv export --no-emit-project -o /tmp/audit.txt && uv run pip-audit --requirement /tmp/audit.txt --disable-pip
 ```
 
 CI runs on push/PR via two workflows:
@@ -25,7 +24,7 @@ CI runs on push/PR via two workflows:
 
 ## Branching
 
-All changes go to `develop` first and reach `main` through a pull request. Dependabot opens its PRs against `develop`.
+All changes go to `develop` first and reach `main` through a pull request. Dependabot (uv ecosystem) opens its PRs against `develop` and updates `pyproject.toml` and `uv.lock` together.
 
 ## README table of contents
 
