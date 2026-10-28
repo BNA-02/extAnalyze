@@ -191,11 +191,32 @@ class TestCodeReviewScoring:
         assert len(cr.exfil_flows) == 10
 
         base = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa())
-        with_cr = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), cr)
+        with_cr = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), code_review=cr)
         assert with_cr.score - base.score == CODE_REVIEW_CAP
         assert any("exfiltration flow" in r for r in with_cr.reasons)
 
     def test_none_code_review_is_neutral(self):
         a = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa())
-        b = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), None)
+        b = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), code_review=None)
         assert a.score == b.score
+
+    def test_virustotal_findings_are_outside_the_cap(self):
+        from extanalyze.analysis.code_review import CodeFinding, CodeReviewResult
+        from extanalyze.scoring.aggregator import CODE_REVIEW_CAP
+
+        pattern_findings = [
+            CodeFinding(f"CR-X-{i}", "x", "NETWORK", "CRITICAL", "d", 1) for i in range(5)
+        ]
+        vt = CodeFinding("CR-DEEP-VT", "VirusTotal flags bad.test", "NETWORK", "CRITICAL", "d", 1)
+        base = aggregate(_clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa())
+        cr = CodeReviewResult(pattern_findings, [], 1, [], [])
+        capped = aggregate(
+            _clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), code_review=cr
+        )
+        assert capped.score - base.score == CODE_REVIEW_CAP
+        cr.findings.append(vt)
+        with_vt = aggregate(
+            _clean_tpci(), _clean_sentry(), _clean_liveness(), _empty_pa(), code_review=cr
+        )
+        assert with_vt.score - capped.score == 15
+        assert any("CR-DEEP-VT" in r for r in with_vt.reasons)

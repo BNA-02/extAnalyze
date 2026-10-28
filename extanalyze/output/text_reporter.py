@@ -344,6 +344,18 @@ def _print_code_review(console: Console, result: AnalysisResult) -> None:
         console.print(
             f"\n  External domains referenced: {shown}" + (f" (+{more} more)" if more > 0 else "")
         )
+    for label, items in (("IP addresses", cr.ips), ("Bitcoin addresses", cr.btc_addresses)):
+        if items:
+            shown = ", ".join(escape(i["address"]) for i in items[:5])
+            console.print(
+                f"  {label}: {shown}" + (f" (+{len(items) - 5} more)" if len(items) > 5 else "")
+            )
+    flagged = [v for v in cr.vt_results if v.get("malicious", 0) or v.get("suspicious", 0)]
+    if cr.deep:
+        console.print(
+            f"  [dim]--deep: entropy/deobfuscation, {len(cr.retire_js)} vulnerable library hit(s), "
+            f"{len(cr.vt_results)} VirusTotal lookup(s), {len(flagged)} flagged[/dim]"
+        )
     if cr.files_skipped:
         console.print(f"  [yellow]{len(cr.files_skipped)} file(s) skipped (size limits)[/yellow]")
 

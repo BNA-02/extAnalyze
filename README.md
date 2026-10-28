@@ -21,7 +21,6 @@ intelligence databases.
 - [Contributing](#contributing)
 - [Project Layout](#project-layout)
 - [Code review](#code-review)
-- [Dependencies](#dependencies)
 - [Limitations](#limitations)
 - [License](#license)
 
@@ -50,7 +49,7 @@ intelligence databases.
 
 **MV2 vs MV3 awareness**
 - Manifest version detected and displayed on every analysis
-- Permission abuse descriptions are version-aware example : `webRequestBlocking` (MV2-only MITM) distinguished from read-only MV3 webRequest
+- Permission abuse descriptions are version-aware example: `webRequestBlocking` (MV2-only MITM) distinguished from read-only MV3 webRequest
 
 **Output**
 - JSON (`--output json`) for CI/pipeline integration
@@ -60,12 +59,26 @@ intelligence databases.
 
 ## Installation
 
+From a clone (pip):
+
 ```bash
 git clone https://github.com/BNA-02/extAnalyze.git
-cd extanalyze
+cd extAnalyze
 python3 -m venv venv
 source venv/bin/activate
 pip install -e .
+```
+
+With [uv](https://docs.astral.sh/uv/):
+
+```bash
+# Install as an isolated tool, straight from GitHub
+uv tool install git+https://github.com/BNA-02/extAnalyze.git
+# or run once without installing
+uvx --from git+https://github.com/BNA-02/extAnalyze.git extanalyze --help
+
+# From a clone, into the current environment
+uv pip install .
 ```
 
 Python 3.10+ required.
@@ -181,7 +194,7 @@ Cache lives at `~/.extanalyze/cache/`.
 
 ## Contributing
 
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, tests, linting, security scans, dependency locks and CI.
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, tests, linting, security scans and CI.
 
 ---
 
@@ -228,26 +241,33 @@ tests/
 
 ## Code review
 
-After extraction, `extanalyze/analysis/code_review.py` statically scans the extension's JS and HTML (never executing it) for:
+After extraction, `extanalyze/analysis/code_review.py` statically scans the extension's JS and HTML (never executing it) with about 45 rules:
 
 - **Dynamic code loading**: `eval`, `new Function`, `importScripts`/`import()` of remote URLs, runtime script injection, remote `<script src>`
-- **Exfiltration channels**: `sendBeacon`, POSTs to hard-coded URLs, WebSockets, pixel beacons
+- **Exfiltration and C2**: `sendBeacon`, POSTs and fetches to hard-coded URLs, WebSockets, pixel beacons, polling, messaging other extensions
 - **Sensitive data access**: cookies, history, password fields, keystrokes, clipboard, request interception
-- **Obfuscation**: `_0x` identifiers, base64 blobs, `fromCharCode` chains, escape runs
+- **Secrets**: hard-coded API keys, AWS keys, private keys, tokens (matched text is redacted in reports)
+- **Obfuscation**: packers, `_0x` identifiers, base64 blobs, `fromCharCode` chains, escape runs
+- **CSP weaknesses** in `manifest.json`
 - **Exfiltration flows**: a file that both reads sensitive data and has an outbound channel
-- **External domains** referenced in the code
+- **Intel**: external domains, public IP addresses and Bitcoin addresses found in the code
 
-These are heuristic leads for manual review, not verdicts: minified libraries trigger some rules legitimately. Score contribution is capped at 30 points.
+Third-party directories (`lib/`, `vendor/`, `node_modules/`...) run only the HIGH and CRITICAL rules. Findings are heuristic leads for manual review, not verdicts. Score contribution is capped at 40 points. VirusTotal findings are scored outside that cap.
 
-## Dependencies
+### `--deep`
 
-Runtime dependencies are hash-pinned in `requirements.lock`; dev tooling in `requirements-dev.lock`. Install reproducibly with `pip install --require-hashes -r requirements.lock`. Regeneration commands are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+`--deep` adds three extras to the same result (same findings list, same scoring):
+
+- **AST data-flow check** (tree-sitter): flags sensitive data (cookies, history, storage, clipboard, password fields) that reaches `fetch`, `sendBeacon`, `.send` or an image beacon within the same file. Name-based taint, so it is stronger evidence than the regex "same file" heuristic but not a full analysis
+- **Entropy analysis and static deobfuscation**: decodes base64 literals, hex/unicode escapes and `fromCharCode` lists, then re-runs the rules on the decoded text
+- **RetireJS**: known-vulnerable bundled JavaScript libraries
+- **VirusTotal**: domain reputation lookups when `VIRUSTOTAL_API_KEY` is set. Domains found in the extension are sent to VirusTotal.
 
 ---
 
 ## Limitations
 
-- **Regex-based code review**: no AST or data-flow analysis; obfuscated or split-up code can evade it
+- **Mostly regex-based code review**: the default scan has no AST (only `--deep` does, within a single file); obfuscated or split-up code can evade it
 - **Static analysis only**: no dynamic execution, no runtime network capture
 - **CRX catalog snapshot**: Chrome catalog dated 2023-10-18; newer extensions fall back to live store metadata
 - **CWS JSON API**: undocumented internal endpoint (`xY2Ddd` RPC); may break if Google changes the frontend
