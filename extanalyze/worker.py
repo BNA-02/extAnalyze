@@ -17,7 +17,7 @@ from .analysis.categorizer import categorize
 from .analysis.permissions import analyze as analyze_permissions
 from .core.downloader import ExtensionNotDownloadableError, download
 from .core.enrichment import enrich
-from .core.extractor import ExtractionError, extract
+from .core.extractor import ExtractionError, cleanup_extraction, extract
 from .core.ingestion import ExtensionInput
 from .core.manifest_parser import parse_manifest
 from .core.store_meta import (
@@ -202,6 +202,8 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
     download_sha256 = ""
     download_size = 0
     crx_format = ""
+    dl = None
+    extract_result = None
 
     if is_builtin:
         # Builtin extensions are baked into the browser binary — no CRX to download.
@@ -245,6 +247,11 @@ def analyze_single(inp: ExtensionInput) -> AnalysisResult:
             download_error = str(e)
         except Exception as e:
             download_error = f"Unexpected download error: {e}"
+        finally:
+            if extract_result is not None:
+                cleanup_extraction(extract_result.tmp_dir)
+            if dl is not None:
+                dl.path.unlink(missing_ok=True)
 
     # ── Step 9: Risk scoring ──────────────────────────────────────────────
     # Create minimal objects for scoring if analysis failed
