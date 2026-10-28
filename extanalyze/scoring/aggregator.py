@@ -176,7 +176,8 @@ def aggregate(
         )
 
     # ── Code review (heuristic: capped so minified libraries can't dominate) ─
-    if code_review is not None:
+    # Skipped when --deep ran: its JS rules overlap, and scoring both would double count.
+    if code_review is not None and deep_result is None:
         cr_points = 0
         for f in code_review.findings:
             cr_points += CODE_POINTS.get(f.severity, 0)

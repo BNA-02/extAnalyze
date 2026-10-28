@@ -13,6 +13,8 @@ import time
 
 import requests
 
+from extanalyze.core.http import get_limited
+
 _VT_API_URL = "https://www.virustotal.com/api/v3/domains/{domain}"
 _RATE_LIMIT_DELAY = 15  # seconds between requests on free tier (4/min)
 
@@ -35,7 +37,7 @@ def lookup_domains(domains: list[str]) -> list[dict]:
             time.sleep(_RATE_LIMIT_DELAY)
 
         try:
-            resp = requests.get(
+            resp = get_limited(
                 _VT_API_URL.format(domain=domain),
                 headers=headers,
                 timeout=15,

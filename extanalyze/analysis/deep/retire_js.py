@@ -13,7 +13,7 @@ import re
 import sys
 from pathlib import Path
 
-import requests
+from extanalyze.core.http import get_limited
 
 _CACHE_DIR = Path.home() / ".extanalyze" / "cache"
 _RETIRE_DB_PATH = _CACHE_DIR / "retirejs_db.json"
@@ -21,6 +21,7 @@ _RETIRE_DB_URL = (
     "https://raw.githubusercontent.com/RetireJS/retire.js/master/repository/jsrepository.json"
 )
 _CACHE_TTL_SECONDS = 86400  # 24 hours
+_MAX_DB_BYTES = 25 * 1024 * 1024
 
 _db_cache: dict | None = None
 
@@ -46,7 +47,7 @@ def _load_db() -> dict:
 
     # Fetch fresh copy
     try:
-        resp = requests.get(_RETIRE_DB_URL, timeout=10)
+        resp = get_limited(_RETIRE_DB_URL, max_bytes=_MAX_DB_BYTES, timeout=10)
         resp.raise_for_status()
         _RETIRE_DB_PATH.write_text(resp.text)
         _db_cache = resp.json()
